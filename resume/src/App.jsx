@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getAnalytics } from "firebase/analytics";
 import { 
   Upload, FileText, CheckCircle, AlertCircle, Briefcase, Search, 
   MessageSquare, Settings, LogOut, LayoutDashboard, Cloud, 
@@ -12,13 +13,17 @@ import {
 // 1. Firebase 設定 (請填寫您的 Config)
 // ==========================================
 const firebaseConfig = {
-  apiKey: "請填入",
-  authDomain: "請填入",
-  projectId: "請填入",
-  storageBucket: "請填入",
-  messagingSenderId: "請填入",
-  appId: "請填入"
+  apiKey: "AIzaSyA9qmQY2S803Nxog-SRoo39U_s8hV93Sr8",
+  authDomain: "ai-resume-c5d49.firebaseapp.com",
+  projectId: "ai-resume-c5d49",
+  storageBucket: "ai-resume-c5d49.firebasestorage.app",
+  messagingSenderId: "61017203398",
+  appId: "1:61017203398:web:83434c32379297d803adc7",
+  measurementId: "G-NHJGNSPGG7"
 };
+
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
 // 避免 React Strict Mode 重複初始化
 let app, db, storage;
