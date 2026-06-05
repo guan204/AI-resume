@@ -22,8 +22,6 @@ const firebaseConfig = {
   measurementId: "G-NHJGNSPGG7"
 };
 
-const analytics = getAnalytics(app);
-
 // 避免 React Strict Mode 重複初始化
 let app, db, storage;
 const isFirebaseConfigured = firebaseConfig.apiKey !== "請填入" && firebaseConfig.apiKey !== "";
