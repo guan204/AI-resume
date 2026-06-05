@@ -78,19 +78,19 @@ const COLORS = {
 const STYLES = {
   card: {
     backgroundColor: COLORS.surface,
-    borderRadius: "16px",
+    borderRadius: "18px",
     padding: "24px",
     border: `1px solid ${COLORS.border}`,
-    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.05)",
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.06)",
   },
   button: {
     backgroundColor: COLORS.primary,
     color: COLORS.surface,
     border: "none",
-    padding: "11px 18px",
-    borderRadius: "10px",
+    padding: "12px 18px",
+    borderRadius: "12px",
     cursor: "pointer",
-    fontWeight: 700,
+    fontWeight: 800,
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -100,7 +100,7 @@ const STYLES = {
   input: {
     width: "100%",
     padding: "12px 14px",
-    borderRadius: "10px",
+    borderRadius: "12px",
     border: `1px solid ${COLORS.border}`,
     outline: "none",
     boxSizing: "border-box",
@@ -110,7 +110,7 @@ const STYLES = {
   title: {
     color: COLORS.primary,
     margin: "0 0 16px 0",
-    fontSize: "1.2rem",
+    fontSize: "1.18rem",
     display: "flex",
     alignItems: "center",
     gap: "8px",
@@ -119,24 +119,24 @@ const STYLES = {
 };
 
 const PUBLIC_JOBS = [
-  { id: 1, title: "前端工程師", company: "雲端科技股份有限公司", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["React", "JavaScript", "CSS", "Firebase"] },
-  { id: 2, title: "後端工程師", company: "系統整合企業", location: "高雄市", type: "全職", category: "資訊工程", reqSkills: ["Node.js", "Python", "MySQL", "API"] },
-  { id: 3, title: "資料分析助理", company: "大數據智庫", location: "新竹市", type: "實習 / 全職", category: "資料分析", reqSkills: ["Python", "SQL", "Excel", "資料視覺化"] },
-  { id: 4, title: "雲端系統助理工程師", company: "雲端整合服務公司", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["Firebase", "Cloud", "API", "資料庫"] },
-  { id: 5, title: "軟體測試工程師", company: "全球軟體集團", location: "台中市", type: "全職", category: "資訊工程", reqSkills: ["QA", "測試案例", "JavaScript", "自動化測試"] },
-  { id: 6, title: "UI/UX 設計師", company: "創新設計實驗室", location: "台中市", type: "全職", category: "設計", reqSkills: ["Figma", "Prototype", "User Research", "Wireframe"] },
-  { id: 7, title: "數位行銷企劃", company: "星傳媒體集團", location: "台北市", type: "全職", category: "行銷", reqSkills: ["社群行銷", "SEO", "Google Analytics", "文案撰寫"] },
-  { id: 8, title: "內容編輯 / 社群小編", company: "新媒體內容公司", location: "遠端 / 台北市", type: "兼職 / 全職", category: "內容行銷", reqSkills: ["文案撰寫", "社群經營", "Canva", "企劃"] },
-  { id: 9, title: "產品助理 PM", company: "知名電商平台", location: "台北市", type: "全職", category: "產品管理", reqSkills: ["專案管理", "Agile", "數據分析", "溝通協調"] },
-  { id: 10, title: "人力資源專員 HR", company: "全球製造集團", location: "桃園市", type: "全職", category: "人力資源", reqSkills: ["人才招募", "勞基法", "員工訓練", "跨部門溝通"] },
-  { id: 11, title: "行政助理", company: "區域營運中心", location: "台南市", type: "全職", category: "行政", reqSkills: ["文件管理", "Excel", "溝通協調", "細心"] },
-  { id: 12, title: "業務助理", company: "B2B 解決方案公司", location: "新北市", type: "全職", category: "業務", reqSkills: ["客戶溝通", "簡報", "CRM", "資料整理"] },
-  { id: 13, title: "客服專員", company: "金融科技服務平台", location: "台北市", type: "全職", category: "客服", reqSkills: ["問題處理", "溝通能力", "耐心", "服務流程"] },
-  { id: 14, title: "財務會計助理", company: "連鎖零售企業", location: "台中市", type: "全職", category: "財會", reqSkills: ["Excel", "帳務處理", "細心", "數字敏感度"] },
-  { id: 15, title: "供應鏈管理助理", company: "智慧物流公司", location: "桃園市", type: "全職", category: "供應鏈", reqSkills: ["庫存管理", "Excel", "資料整理", "流程優化"] },
-  { id: 16, title: "遊戲企劃助理", company: "手機遊戲開發工作室", location: "台北市", type: "實習 / 全職", category: "遊戲企劃", reqSkills: ["遊戲企劃", "關卡設計", "文件撰寫", "使用者體驗"] },
-  { id: 17, title: "研究助理", company: "校園產學合作中心", location: "屏東縣", type: "兼職 / 實習", category: "研究", reqSkills: ["資料蒐集", "文獻整理", "簡報製作", "報告撰寫"] },
-  { id: 18, title: "AI 應用助理工程師", company: "AI 新創實驗室", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["Python", "Prompt", "API", "資料處理"] },
+  { id: 1, title: "前端工程師", company: "雲端科技股份有限公司", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["React", "JavaScript", "CSS", "Firebase"], intro: "負責前端介面開發、資料串接與平台功能維護，適合具備作品集的新鮮人。" },
+  { id: 2, title: "後端工程師", company: "系統整合企業", location: "高雄市", type: "全職", category: "資訊工程", reqSkills: ["Node.js", "Python", "MySQL", "API"], intro: "協助 API 開發、資料庫設計與系統維運，重視基礎程式能力與邏輯思考。" },
+  { id: 3, title: "資料分析助理", company: "大數據智庫", location: "新竹市", type: "實習 / 全職", category: "資料分析", reqSkills: ["Python", "SQL", "Excel", "資料視覺化"], intro: "整理資料、建立報表並協助分析商業問題，適合想進入資料領域的新鮮人。" },
+  { id: 4, title: "雲端系統助理工程師", company: "雲端整合服務公司", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["Firebase", "Cloud", "API", "資料庫"], intro: "協助雲端平台建置與資料服務串接，適合對雲端應用有基礎認識者。" },
+  { id: 5, title: "軟體測試工程師", company: "全球軟體集團", location: "台中市", type: "全職", category: "資訊工程", reqSkills: ["QA", "測試案例", "JavaScript", "自動化測試"], intro: "負責測試案例規劃、功能驗證與品質追蹤，適合細心且具程式基礎者。" },
+  { id: 6, title: "UI/UX 設計師", company: "創新設計實驗室", location: "台中市", type: "全職", category: "設計", reqSkills: ["Figma", "Prototype", "User Research", "Wireframe"], intro: "參與產品介面設計、使用者研究與原型製作，適合具設計作品集者。" },
+  { id: 7, title: "數位行銷企劃", company: "星傳媒體集團", location: "台北市", type: "全職", category: "行銷", reqSkills: ["社群行銷", "SEO", "Google Analytics", "文案撰寫"], intro: "負責社群內容、廣告成效追蹤與行銷活動企劃，適合善於文字與數據觀察者。" },
+  { id: 8, title: "內容編輯 / 社群小編", company: "新媒體內容公司", location: "遠端 / 台北市", type: "兼職 / 全職", category: "內容行銷", reqSkills: ["文案撰寫", "社群經營", "Canva", "企劃"], intro: "製作社群貼文、短文內容與活動素材，適合對內容創作有興趣的新鮮人。" },
+  { id: 9, title: "產品助理 PM", company: "知名電商平台", location: "台北市", type: "全職", category: "產品管理", reqSkills: ["專案管理", "Agile", "數據分析", "溝通協調"], intro: "協助需求整理、跨部門溝通與產品流程追蹤，適合具邏輯與溝通能力者。" },
+  { id: 10, title: "人力資源專員 HR", company: "全球製造集團", location: "桃園市", type: "全職", category: "人力資源", reqSkills: ["人才招募", "勞基法", "員工訓練", "跨部門溝通"], intro: "協助招募、教育訓練與員工關係管理，適合喜歡與人互動者。" },
+  { id: 11, title: "行政助理", company: "區域營運中心", location: "台南市", type: "全職", category: "行政", reqSkills: ["文件管理", "Excel", "溝通協調", "細心"], intro: "處理文件、會議安排與跨部門行政支援，適合重視穩定與細節者。" },
+  { id: 12, title: "業務助理", company: "B2B 解決方案公司", location: "新北市", type: "全職", category: "業務", reqSkills: ["客戶溝通", "簡報", "CRM", "資料整理"], intro: "協助客戶資料整理、簡報準備與業務流程追蹤，適合外向且願意學習者。" },
+  { id: 13, title: "客服專員", company: "金融科技服務平台", location: "台北市", type: "全職", category: "客服", reqSkills: ["問題處理", "溝通能力", "耐心", "服務流程"], intro: "協助客戶問題處理與服務流程紀錄，適合有耐心且表達清楚者。" },
+  { id: 14, title: "財務會計助理", company: "連鎖零售企業", location: "台中市", type: "全職", category: "財會", reqSkills: ["Excel", "帳務處理", "細心", "數字敏感度"], intro: "協助帳務整理、報表製作與資料核對，適合細心且對數字敏感者。" },
+  { id: 15, title: "供應鏈管理助理", company: "智慧物流公司", location: "桃園市", type: "全職", category: "供應鏈", reqSkills: ["庫存管理", "Excel", "資料整理", "流程優化"], intro: "協助庫存追蹤、物流資料整理與流程改善，適合具組織能力者。" },
+  { id: 16, title: "遊戲企劃助理", company: "手機遊戲開發工作室", location: "台北市", type: "實習 / 全職", category: "遊戲企劃", reqSkills: ["遊戲企劃", "關卡設計", "文件撰寫", "使用者體驗"], intro: "協助關卡設計、玩法文件撰寫與遊戲測試，適合對遊戲設計有熱情者。" },
+  { id: 17, title: "研究助理", company: "校園產學合作中心", location: "屏東縣", type: "兼職 / 實習", category: "研究", reqSkills: ["資料蒐集", "文獻整理", "簡報製作", "報告撰寫"], intro: "協助資料整理、研究文件撰寫與專題報告製作，適合學生兼職或實習。" },
+  { id: 18, title: "AI 應用助理工程師", company: "AI 新創實驗室", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["Python", "Prompt", "API", "資料處理"], intro: "協助 AI 應用功能測試、資料整理與工具串接，適合對 AI 應用有興趣者。" },
 ];
 
 const CHAT_RESPONSES = {
@@ -342,9 +342,8 @@ export default function App() {
 
       <div
         style={{
-          display: "flex",
-          width: "100%",
           minHeight: "100vh",
+          width: "100%",
           backgroundColor: COLORS.background,
           color: COLORS.textMain,
           textAlign: "left",
@@ -373,49 +372,14 @@ export default function App() {
 
         <div
           style={{
-            flex: 1,
-            minWidth: 0,
-            width: isMobile ? "100%" : "calc(100% - 260px)",
+            marginLeft: isMobile ? 0 : 260,
             minHeight: "100vh",
+            width: isMobile ? "100%" : "calc(100% - 260px)",
             backgroundColor: COLORS.background,
           }}
         >
           {isMobile && (
-            <div
-              style={{
-                backgroundColor: COLORS.surface,
-                padding: "14px 18px",
-                display: "flex",
-                alignItems: "center",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                position: "sticky",
-                top: 0,
-                zIndex: 30,
-              }}
-            >
-              <button
-                onClick={() => setSidebarOpen(true)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: 0,
-                  cursor: "pointer",
-                  color: COLORS.primary,
-                }}
-              >
-                <Menu size={24} />
-              </button>
-
-              <span
-                style={{
-                  marginLeft: "14px",
-                  fontWeight: 800,
-                  color: COLORS.primary,
-                }}
-              >
-                雲端智慧履歷系統
-              </span>
-            </div>
+            <MobileHeader setSidebarOpen={setSidebarOpen} />
           )}
 
           <main style={{ width: "100%", margin: 0, padding: 0 }}>
@@ -424,6 +388,7 @@ export default function App() {
                 <MessageBox type="error" text={sysError} />
               </div>
             )}
+
             {sysMsg && (
               <div style={{ padding: isMobile ? "20px 20px 0" : "24px 32px 0" }}>
                 <MessageBox type="success" text={sysMsg} />
@@ -434,14 +399,13 @@ export default function App() {
               <AuthView
                 setSysError={setSysError}
                 setSysMsg={setSysMsg}
-                onLoginSuccess={() => {
-                  setCurrentTab("dashboard");
-                }}
+                onLoginSuccess={() => setCurrentTab("dashboard")}
               />
             )}
 
             {currentTab === "jobs" && <JobBoardView />}
             {currentTab === "campus" && <CampusView />}
+
             {currentTab === "dashboard" && (
               <DashboardView
                 currentUser={currentUser}
@@ -450,6 +414,7 @@ export default function App() {
                 setCurrentTab={handleTabClick}
               />
             )}
+
             {currentTab === "upload" && (
               <UploadView
                 setSysError={setSysError}
@@ -460,6 +425,7 @@ export default function App() {
                 onRecordCreated={handleRecordCreated}
               />
             )}
+
             {currentTab === "settings" && <SettingsView currentUser={currentUser} />}
           </main>
         </div>
@@ -467,6 +433,46 @@ export default function App() {
         <ChatAssistant isMobile={isMobile} />
       </div>
     </>
+  );
+}
+
+function MobileHeader({ setSidebarOpen }) {
+  return (
+    <div
+      style={{
+        backgroundColor: COLORS.surface,
+        padding: "14px 18px",
+        display: "flex",
+        alignItems: "center",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+        position: "sticky",
+        top: 0,
+        zIndex: 30,
+      }}
+    >
+      <button
+        onClick={() => setSidebarOpen(true)}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          color: COLORS.primary,
+        }}
+      >
+        <Menu size={24} />
+      </button>
+
+      <span
+        style={{
+          marginLeft: "14px",
+          fontWeight: 800,
+          color: COLORS.primary,
+        }}
+      >
+        雲端智慧履歷系統
+      </span>
+    </div>
   );
 }
 
@@ -481,12 +487,12 @@ function Sidebar({
   return (
     <aside
       style={{
-        position: isMobile ? "fixed" : "sticky",
+        position: "fixed",
         top: 0,
         left: 0,
-        height: "100vh",
+        bottom: 0,
         width: "260px",
-        flexShrink: 0,
+        height: "100vh",
         backgroundColor: COLORS.primary,
         color: COLORS.surface,
         transition: "transform 0.25s ease",
@@ -494,7 +500,8 @@ function Sidebar({
         zIndex: 50,
         display: "flex",
         flexDirection: "column",
-        boxShadow: "2px 0 8px rgba(0,0,0,0.1)",
+        boxShadow: "2px 0 8px rgba(0,0,0,0.12)",
+        overflowY: "auto",
       }}
     >
       <div
@@ -888,19 +895,14 @@ function HeroSection({ title, description, action, statItems = [] }) {
             {description}
           </p>
 
-          {action && (
-            <div style={{ marginTop: 20 }}>
-              {action}
-            </div>
-          )}
+          {action && <div style={{ marginTop: 20 }}>{action}</div>}
         </div>
 
         <div
           style={{
             ...STYLES.card,
             padding: "20px",
-            background:
-              "linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)",
+            background: "linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)",
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: "14px",
@@ -922,8 +924,8 @@ function HeroSection({ title, description, action, statItems = [] }) {
                 style={{
                   color: COLORS.primary,
                   fontWeight: 900,
-                  fontSize: "1.4rem",
-                  lineHeight: 1.1,
+                  fontSize: "1.35rem",
+                  lineHeight: 1.15,
                 }}
               >
                 {item.value}
@@ -940,11 +942,7 @@ function HeroSection({ title, description, action, statItems = [] }) {
 }
 
 function PageBody({ children }) {
-  return (
-    <section style={{ padding: "28px 32px 40px" }}>
-      {children}
-    </section>
-  );
+  return <section style={{ padding: "28px 32px 42px" }}>{children}</section>;
 }
 
 function JobBoardView() {
@@ -1016,12 +1014,7 @@ function JobBoardView() {
                   placeholder="搜尋職缺、公司、地點或技能，例如 React、行銷、資料分析"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    ...STYLES.input,
-                    margin: 0,
-                    border: "none",
-                    paddingLeft: 0,
-                  }}
+                  style={{ ...STYLES.input, margin: 0, border: "none", paddingLeft: 0 }}
                 />
               </div>
             </div>
@@ -1047,20 +1040,13 @@ function JobBoardView() {
           </div>
         </div>
 
-        <div
-          className="responsive-grid-3"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: "18px",
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {filteredJobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <JobListItem key={job.id} job={job} />
           ))}
 
           {filteredJobs.length === 0 && (
-            <div style={{ ...STYLES.card, gridColumn: "1 / -1", textAlign: "left" }}>
+            <div style={STYLES.card}>
               <p style={{ margin: 0, color: COLORS.textMuted }}>
                 找不到符合條件的職缺，請嘗試更換關鍵字或類別。
               </p>
@@ -1072,68 +1058,63 @@ function JobBoardView() {
   );
 }
 
-function JobCard({ job }) {
+function JobListItem({ job }) {
   return (
     <div
       style={{
         ...STYLES.card,
-        marginBottom: 0,
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "260px",
-        padding: "22px",
+        display: "grid",
+        gridTemplateColumns: "1fr auto",
+        gap: "18px",
+        alignItems: "center",
+        padding: "22px 24px",
       }}
+      className="responsive-grid-2"
     >
-      <div style={{ marginBottom: 12 }}>
-        <span style={tagStyle(COLORS.accent)}>{job.category}</span>
-      </div>
+      <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          <span style={tagStyle(COLORS.accent)}>{job.category}</span>
+          <span style={tagStyle(COLORS.textMuted)}>{job.type}</span>
+          <span style={tagStyle(COLORS.textMuted)}>{job.location}</span>
+        </div>
 
-      <h3 style={{ margin: "0 0 8px", color: COLORS.primary, fontSize: "1.08rem", lineHeight: 1.4 }}>
-        {job.title}
-      </h3>
+        <h3 style={{ margin: "0 0 8px", color: COLORS.primary, fontSize: "1.12rem" }}>
+          {job.title}
+        </h3>
 
-      <p style={{ margin: "0 0 14px", color: COLORS.textMuted, fontSize: "0.9rem", lineHeight: 1.6 }}>
-        {job.company} ‧ {job.location} ‧ {job.type}
-      </p>
+        <p style={{ margin: "0 0 10px", color: COLORS.textMuted, fontSize: "0.94rem" }}>
+          {job.company}
+        </p>
 
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "6px",
-          marginBottom: "18px",
-          flex: 1,
-        }}
-      >
-        {job.reqSkills.map((skill) => (
-          <span key={skill} style={tagStyle(COLORS.textMuted)}>
-            {skill}
-          </span>
-        ))}
+        <p style={{ margin: "0 0 14px", color: COLORS.textMuted, lineHeight: 1.7 }}>
+          {job.intro}
+        </p>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {job.reqSkills.map((skill) => (
+            <span key={skill} style={tagStyle(COLORS.textMuted)}>
+              {skill}
+            </span>
+          ))}
+        </div>
       </div>
 
       <button
         style={{
           ...STYLES.button,
-          width: "100%",
           backgroundColor: "#F8FAFC",
           color: COLORS.primary,
           border: `1px solid ${COLORS.border}`,
-          borderRadius: "12px",
+          whiteSpace: "nowrap",
         }}
       >
-        查看職缺詳情
+        查看詳情
       </button>
     </div>
   );
 }
 
-function DashboardView({
-  currentUser,
-  resumeRecords,
-  recordsLoading,
-  setCurrentTab,
-}) {
+function DashboardView({ currentUser, resumeRecords, recordsLoading, setCurrentTab }) {
   const latestRecord = resumeRecords[0];
 
   const allMatchRates = resumeRecords
@@ -1173,7 +1154,7 @@ function DashboardView({
           className="responsive-grid-2"
           style={{
             display: "grid",
-            gridTemplateColumns: "1.12fr 0.88fr",
+            gridTemplateColumns: "1.1fr 0.9fr",
             gap: "20px",
           }}
         >
@@ -1323,12 +1304,8 @@ function QuickActionCard({ title, text, onClick }) {
       }}
     >
       <div>
-        <div style={{ fontWeight: 800, color: COLORS.primary, marginBottom: 6 }}>
-          {title}
-        </div>
-        <div style={{ color: COLORS.textMuted, lineHeight: 1.6, fontSize: "0.92rem" }}>
-          {text}
-        </div>
+        <div style={{ fontWeight: 800, color: COLORS.primary, marginBottom: 6 }}>{title}</div>
+        <div style={{ color: COLORS.textMuted, lineHeight: 1.6, fontSize: "0.92rem" }}>{text}</div>
       </div>
       <ChevronRight size={18} color={COLORS.textMuted} />
     </button>
@@ -1375,13 +1352,8 @@ function UploadView({
     try {
       const response = await fetch("/api/analyzeResume", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          resumeText,
-          fileName: file.name,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeText, fileName: file.name }),
       });
 
       const aiResult = await response.json();
@@ -1592,48 +1564,17 @@ function AnalysisResult({ result }) {
         </p>
       </div>
 
-      <div
-        className="responsive-grid-2"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 20,
-        }}
-      >
-        <InfoListCard
-          icon={<BarChart2 size={20} />}
-          title="已具備能力"
-          items={result.skills}
-          color={COLORS.success}
-          emptyText="尚未整理到明確能力。"
-        />
-
-        <InfoListCard
-          icon={<Target size={20} />}
-          title="建議補強能力"
-          items={result.missingSkills}
-          color={COLORS.warning}
-          emptyText="目前沒有明顯需要補強的能力。"
-        />
+      <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <InfoListCard icon={<BarChart2 size={20} />} title="已具備能力" items={result.skills} color={COLORS.success} emptyText="尚未整理到明確能力。" />
+        <InfoListCard icon={<Target size={20} />} title="建議補強能力" items={result.missingSkills} color={COLORS.warning} emptyText="目前沒有明顯需要補強的能力。" />
       </div>
 
-      <div
-        className="responsive-grid-2"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 20,
-        }}
-      >
+      <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
         <BulletCard icon={<Star size={20} />} title="履歷亮點" items={result.resumeHighlights} />
         <BulletCard icon={<AlertCircle size={20} />} title="可改善問題" items={result.resumeProblems} />
       </div>
 
-      <BulletCard
-        icon={<CheckCircle size={20} />}
-        title="履歷優化建議"
-        items={result.resumeSuggestions}
-      />
+      <BulletCard icon={<CheckCircle size={20} />} title="履歷優化建議" items={result.resumeSuggestions} />
 
       <div style={STYLES.card}>
         <h3 style={STYLES.title}>
@@ -1664,19 +1605,11 @@ function AnalysisResult({ result }) {
                   textAlign: "left",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: "12px",
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                   <div>
                     <h4 style={{ margin: "0 0 6px", color: COLORS.primary, fontSize: "1.1rem" }}>
                       {job.title}
                     </h4>
-
                     <p style={{ margin: 0, color: COLORS.textMuted, fontSize: "0.9rem", lineHeight: 1.5 }}>
                       {job.company} ‧ {job.location} ‧ {job.type || "全職 / 實習"}
                     </p>
@@ -1704,15 +1637,7 @@ function AnalysisResult({ result }) {
                   ))}
                 </div>
 
-                <div
-                  style={{
-                    marginTop: 12,
-                    backgroundColor: "#F8FAFC",
-                    padding: "12px",
-                    borderRadius: "10px",
-                    lineHeight: 1.7,
-                  }}
-                >
+                <div style={{ marginTop: 12, backgroundColor: "#F8FAFC", padding: "12px", borderRadius: "10px", lineHeight: 1.7 }}>
                   <strong style={{ color: COLORS.primary }}>推薦原因：</strong>
                   <span> {job.reason}</span>
                 </div>
@@ -1742,17 +1667,10 @@ function AnalysisResult({ result }) {
 function InfoListCard({ icon, title, items = [], color, emptyText }) {
   return (
     <div style={STYLES.card}>
-      <h3 style={STYLES.title}>
-        {icon} {title}
-      </h3>
-
+      <h3 style={STYLES.title}>{icon} {title}</h3>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {items.length > 0 ? (
-          items.map((item) => (
-            <span key={item} style={tagStyle(color)}>
-              {item}
-            </span>
-          ))
+          items.map((item) => <span key={item} style={tagStyle(color)}>{item}</span>)
         ) : (
           <span style={{ color: COLORS.textMuted }}>{emptyText}</span>
         )}
@@ -1764,15 +1682,10 @@ function InfoListCard({ icon, title, items = [], color, emptyText }) {
 function BulletCard({ icon, title, items = [] }) {
   return (
     <div style={STYLES.card}>
-      <h3 style={STYLES.title}>
-        {icon} {title}
-      </h3>
-
+      <h3 style={STYLES.title}>{icon} {title}</h3>
       {items.length > 0 ? (
         <ul style={listStyle}>
-          {items.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
+          {items.map((item, index) => <li key={index}>{item}</li>)}
         </ul>
       ) : (
         <p style={{ margin: 0, color: COLORS.textMuted }}>目前沒有資料。</p>
@@ -1796,19 +1709,11 @@ function CampusView() {
       />
 
       <PageBody>
-        <div
-          className="responsive-grid-2"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 20,
-          }}
-        >
+        <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
           <div style={STYLES.card}>
             <h3 style={{ ...STYLES.title, color: COLORS.success }}>
               <GraduationCap size={24} /> 履歷撰寫指南
             </h3>
-
             <ul style={listStyle}>
               <li><strong>STAR 原則：</strong>用情境、任務、行動、結果描述專案或經歷。</li>
               <li><strong>量化成果：</strong>例如「提升 20% 效率」比「顯著提升效率」更有說服力。</li>
@@ -1821,7 +1726,6 @@ function CampusView() {
             <h3 style={{ ...STYLES.title, color: COLORS.warning }}>
               <MessageSquare size={24} /> 面試準備方向
             </h3>
-
             <ul style={listStyle}>
               <li>準備 1 分鐘與 3 分鐘自我介紹。</li>
               <li>熟悉自己做過的專題，包含技術選擇、遇到問題與解法。</li>
@@ -1834,7 +1738,6 @@ function CampusView() {
             <h3 style={STYLES.title}>
               <Briefcase size={22} /> 新鮮人求職建議
             </h3>
-
             <ul style={listStyle}>
               <li>先鎖定 2 到 3 種職務方向，不要一次投太分散。</li>
               <li>針對每個職缺調整履歷關鍵字，例如 React、資料分析、企劃、溝通協調。</li>
@@ -1846,7 +1749,6 @@ function CampusView() {
             <h3 style={STYLES.title}>
               <Target size={22} /> 技能補強方向
             </h3>
-
             <ul style={listStyle}>
               <li>工程職：GitHub、API、資料庫、部署經驗。</li>
               <li>行銷職：文案、社群數據、活動企劃、SEO。</li>
@@ -1880,12 +1782,10 @@ function SettingsView({ currentUser }) {
             <h3 style={STYLES.title}>
               <User size={20} /> 帳號資訊
             </h3>
-
             <p style={{ color: COLORS.textMuted, lineHeight: 1.7, marginTop: 0 }}>
               目前登入帳號：
               <strong style={{ color: COLORS.primary }}> {currentUser?.email}</strong>
             </p>
-
             <p style={{ color: COLORS.textMuted, lineHeight: 1.7, marginBottom: 0 }}>
               本系統使用帳號登入機制管理會員資料，履歷分析結果會儲存在系統中。
             </p>
