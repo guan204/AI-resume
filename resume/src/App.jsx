@@ -1,6 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import {
   getAuth,
   createUserWithEmailAndPassword,
@@ -9,34 +16,28 @@ import {
   onAuthStateChanged,
 } from "firebase/auth";
 import {
-  Upload,
-  FileText,
-  CheckCircle,
   AlertCircle,
-  Briefcase,
-  Search,
-  MessageSquare,
-  Settings,
-  LogOut,
-  LayoutDashboard,
-  Cloud,
-  GraduationCap,
-  X,
-  Send,
-  Menu,
   BarChart2,
+  Briefcase,
+  CheckCircle,
+  Cloud,
+  FileText,
+  GraduationCap,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  MessageSquare,
+  Search,
+  Send,
+  Settings,
   Star,
   Target,
+  Upload,
   User,
   UserPlus,
-  Database,
-  Brain,
-  Server,
+  X,
 } from "lucide-react";
 
-// ==========================================
-// 1. Firebase 設定
-// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyA9qmQY2S803Nxog-SRoo39U_s8hV93Sr8",
   authDomain: "ai-resume-c5d49.firebaseapp.com",
@@ -50,105 +51,18 @@ let app;
 let db;
 let auth;
 
-const isFirebaseConfigured =
-  firebaseConfig.apiKey && firebaseConfig.apiKey !== "請填入";
-
-if (isFirebaseConfigured) {
-  try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    auth = getAuth(app);
-  } catch (error) {
-    console.warn("Firebase 初始化警告:", error);
-  }
+try {
+  app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  auth = getAuth(app);
+} catch (error) {
+  console.warn("Firebase 初始化失敗：", error);
 }
 
-// ==========================================
-// 2. 模擬公開職缺資料
-// ==========================================
-const PUBLIC_JOBS = [
-  {
-    id: 1,
-    title: "數位行銷企劃",
-    company: "星傳媒體集團",
-    location: "台北市",
-    type: "全職",
-    reqSkills: ["社群行銷", "SEO", "Google Analytics", "文案撰寫"],
-  },
-  {
-    id: 2,
-    title: "UI/UX 設計師",
-    company: "創新設計實驗室",
-    location: "台中市",
-    type: "全職",
-    reqSkills: ["Figma", "Prototyping", "User Research", "CSS"],
-  },
-  {
-    id: 3,
-    title: "前端工程師",
-    company: "雲端科技股份有限公司",
-    location: "台北市",
-    type: "全職",
-    reqSkills: ["React", "JavaScript", "CSS", "Firebase"],
-  },
-  {
-    id: 4,
-    title: "人力資源專員 HR",
-    company: "全球製造集團",
-    location: "桃園市",
-    type: "全職",
-    reqSkills: ["人才招募", "勞基法", "員工訓練", "跨部門溝通"],
-  },
-  {
-    id: 5,
-    title: "產品助理 PM",
-    company: "知名電商平台",
-    location: "台北市",
-    type: "全職",
-    reqSkills: ["專案管理", "Agile", "數據分析", "Wireframe"],
-  },
-  {
-    id: 6,
-    title: "後端工程師",
-    company: "系統整合企業",
-    location: "高雄市",
-    type: "全職",
-    reqSkills: ["Node.js", "Python", "MySQL", "Docker"],
-  },
-  {
-    id: 7,
-    title: "資料分析助理",
-    company: "大數據智庫",
-    location: "新竹市",
-    type: "實習 / 全職",
-    reqSkills: ["Python", "SQL", "Excel", "資料視覺化"],
-  },
-  {
-    id: 8,
-    title: "雲端系統助理工程師",
-    company: "雲端整合服務公司",
-    location: "台北市",
-    type: "全職",
-    reqSkills: ["Firebase", "Cloud", "API", "資料庫"],
-  },
-];
-
-const CHAT_RESPONSES = {
-  "我適合什麼工作？":
-    "建議你先上傳履歷並貼上履歷文字，系統會根據你的技能、經歷與職缺條件進行 Gemini AI 分析，再產生個人化推薦。",
-  "我的履歷缺少什麼？":
-    "多數新鮮人履歷容易缺少量化成果、專案角色說明與技能對應職缺的關鍵字。建議用具體數字描述成果。",
-  "新鮮人該怎麼準備？":
-    "建議準備一頁式履歷、1 到 2 個可展示作品集、GitHub 或專題連結，並針對目標職缺調整技能順序。",
-};
-
-// ==========================================
-// 3. 樣式
-// ==========================================
 const COLORS = {
   primary: "#0B2046",
   secondary: "#254B7A",
-  accent: "#3B82F6",
+  accent: "#2563EB",
   background: "#F4F7F9",
   surface: "#FFFFFF",
   textMain: "#1E293B",
@@ -162,35 +76,34 @@ const COLORS = {
 const STYLES = {
   card: {
     backgroundColor: COLORS.surface,
-    borderRadius: "12px",
+    borderRadius: "14px",
     padding: "24px",
-    boxShadow:
-      "0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)",
     border: `1px solid ${COLORS.border}`,
-    marginBottom: "20px",
+    boxShadow: "0 4px 12px rgba(15, 23, 42, 0.06)",
   },
   button: {
     backgroundColor: COLORS.primary,
     color: COLORS.surface,
     border: "none",
-    padding: "10px 20px",
-    borderRadius: "8px",
+    padding: "11px 18px",
+    borderRadius: "9px",
     cursor: "pointer",
-    fontWeight: "600",
-    display: "flex",
+    fontWeight: 700,
+    display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     gap: "8px",
+    lineHeight: 1,
   },
   input: {
     width: "100%",
-    padding: "12px",
-    borderRadius: "8px",
+    padding: "12px 14px",
+    borderRadius: "10px",
     border: `1px solid ${COLORS.border}`,
     outline: "none",
     boxSizing: "border-box",
-    marginTop: "8px",
-    marginBottom: "16px",
+    fontSize: "0.95rem",
+    backgroundColor: COLORS.surface,
   },
   title: {
     color: COLORS.primary,
@@ -199,16 +112,44 @@ const STYLES = {
     display: "flex",
     alignItems: "center",
     gap: "8px",
+    textAlign: "left",
   },
+};
+
+const PUBLIC_JOBS = [
+  { id: 1, title: "前端工程師", company: "雲端科技股份有限公司", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["React", "JavaScript", "CSS", "Firebase"] },
+  { id: 2, title: "後端工程師", company: "系統整合企業", location: "高雄市", type: "全職", category: "資訊工程", reqSkills: ["Node.js", "Python", "MySQL", "API"] },
+  { id: 3, title: "資料分析助理", company: "大數據智庫", location: "新竹市", type: "實習 / 全職", category: "資料分析", reqSkills: ["Python", "SQL", "Excel", "資料視覺化"] },
+  { id: 4, title: "雲端系統助理工程師", company: "雲端整合服務公司", location: "台北市", type: "全職", category: "雲端系統", reqSkills: ["Firebase", "Cloud", "API", "資料庫"] },
+  { id: 5, title: "軟體測試工程師", company: "全球軟體集團", location: "台中市", type: "全職", category: "資訊工程", reqSkills: ["QA", "測試案例", "JavaScript", "自動化測試"] },
+  { id: 6, title: "UI/UX 設計師", company: "創新設計實驗室", location: "台中市", type: "全職", category: "設計", reqSkills: ["Figma", "Prototype", "User Research", "Wireframe"] },
+  { id: 7, title: "數位行銷企劃", company: "星傳媒體集團", location: "台北市", type: "全職", category: "行銷", reqSkills: ["社群行銷", "SEO", "Google Analytics", "文案撰寫"] },
+  { id: 8, title: "內容編輯 / 社群小編", company: "新媒體內容公司", location: "遠端 / 台北市", type: "兼職 / 全職", category: "內容行銷", reqSkills: ["文案撰寫", "社群經營", "Canva", "企劃"] },
+  { id: 9, title: "產品助理 PM", company: "知名電商平台", location: "台北市", type: "全職", category: "產品管理", reqSkills: ["專案管理", "Agile", "數據分析", "溝通協調"] },
+  { id: 10, title: "人力資源專員 HR", company: "全球製造集團", location: "桃園市", type: "全職", category: "人力資源", reqSkills: ["人才招募", "勞基法", "員工訓練", "跨部門溝通"] },
+  { id: 11, title: "行政助理", company: "區域營運中心", location: "台南市", type: "全職", category: "行政", reqSkills: ["文件管理", "Excel", "溝通協調", "細心"] },
+  { id: 12, title: "業務助理", company: "B2B 解決方案公司", location: "新北市", type: "全職", category: "業務", reqSkills: ["客戶溝通", "簡報", "CRM", "資料整理"] },
+  { id: 13, title: "客服專員", company: "金融科技服務平台", location: "台北市", type: "全職", category: "客服", reqSkills: ["問題處理", "溝通能力", "耐心", "服務流程"] },
+  { id: 14, title: "財務會計助理", company: "連鎖零售企業", location: "台中市", type: "全職", category: "財會", reqSkills: ["Excel", "帳務處理", "細心", "數字敏感度"] },
+  { id: 15, title: "供應鏈管理助理", company: "智慧物流公司", location: "桃園市", type: "全職", category: "供應鏈", reqSkills: ["庫存管理", "Excel", "資料整理", "流程優化"] },
+  { id: 16, title: "遊戲企劃助理", company: "手機遊戲開發工作室", location: "台北市", type: "實習 / 全職", category: "遊戲企劃", reqSkills: ["遊戲企劃", "關卡設計", "文件撰寫", "使用者體驗"] },
+  { id: 17, title: "研究助理", company: "校園產學合作中心", location: "屏東縣", type: "兼職 / 實習", category: "研究", reqSkills: ["資料蒐集", "文獻整理", "簡報製作", "報告撰寫"] },
+  { id: 18, title: "AI 應用助理工程師", company: "AI 新創實驗室", location: "台北市", type: "全職", category: "AI 應用", reqSkills: ["Python", "Prompt", "API", "資料處理"] },
+];
+
+const CHAT_RESPONSES = {
+  "我適合什麼工作？": "建議先使用履歷 AI 分析，系統會根據你的技能、經歷與職缺條件產生較精準的推薦。如果還沒上傳履歷，可以先從公開職缺看板搜尋感興趣的職缺。",
+  "我的履歷缺少什麼？": "新鮮人履歷常見問題是缺少量化成果、專案角色不清楚、技能和職缺需求沒有對齊。建議把經歷改成具體成果，例如「完成 React 專題並部署至 Vercel」。",
+  "新鮮人該怎麼準備？": "建議準備一頁式履歷、1 到 2 個可展示作品集、GitHub 或 Demo 連結，並針對目標職缺調整技能順序。",
 };
 
 const tagStyle = (color) => ({
   backgroundColor: `${color}15`,
   color,
-  padding: "4px 10px",
-  borderRadius: "20px",
-  fontSize: "0.85rem",
-  fontWeight: "bold",
+  padding: "5px 10px",
+  borderRadius: "999px",
+  fontSize: "0.82rem",
+  fontWeight: 700,
   border: `1px solid ${color}30`,
 });
 
@@ -217,13 +158,11 @@ const listStyle = {
   paddingLeft: "20px",
   color: COLORS.textMain,
   lineHeight: "1.7",
+  textAlign: "left",
 };
 
-// ==========================================
-// 4. 主程式
-// ==========================================
 export default function App() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 860);
   const [authLoading, setAuthLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentTab, setCurrentTab] = useState("jobs");
@@ -231,9 +170,32 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [sysError, setSysError] = useState("");
   const [sysMsg, setSysMsg] = useState("");
+  const [resumeRecords, setResumeRecords] = useState([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+
+  const loadResumeRecords = async (user) => {
+    if (!db || !user?.uid) return;
+
+    setRecordsLoading(true);
+
+    try {
+      const q = query(collection(db, "resumes"), where("uid", "==", user.uid));
+      const snapshot = await getDocs(q);
+      const records = snapshot.docs
+        .map((docItem) => ({ id: docItem.id, ...docItem.data() }))
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+      setResumeRecords(records);
+    } catch (error) {
+      console.warn("讀取履歷紀錄失敗：", error);
+      setSysError("讀取履歷紀錄失敗，請確認 Firestore Rules 是否允許讀取。");
+    } finally {
+      setRecordsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => setIsMobile(window.innerWidth <= 860);
     window.addEventListener("resize", handleResize);
 
     let unsubscribe = () => {};
@@ -242,6 +204,12 @@ export default function App() {
       unsubscribe = onAuthStateChanged(auth, (user) => {
         setCurrentUser(user || null);
         setAuthLoading(false);
+
+        if (user) {
+          loadResumeRecords(user);
+        } else {
+          setResumeRecords([]);
+        }
       });
     } else {
       setAuthLoading(false);
@@ -273,6 +241,10 @@ export default function App() {
     setSysMsg("");
     setCurrentTab(tab);
     setSidebarOpen(false);
+
+    if (tab === "dashboard" && currentUser) {
+      loadResumeRecords(currentUser);
+    }
   };
 
   const handleLogout = async () => {
@@ -290,41 +262,72 @@ export default function App() {
     }
   };
 
-  if (authLoading) {
-    return <LoadingScreen />;
-  }
+  const handleRecordCreated = (record) => {
+    setResumeRecords((prev) => [record, ...prev]);
+  };
+
+  if (authLoading) return <LoadingScreen />;
 
   return (
     <>
       <style>{`
-        body, html {
-          margin: 0;
-          padding: 0;
-          width: 100%;
-          min-height: 100%;
-          box-sizing: border-box;
-          overflow-x: hidden;
+        html, body, #root {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          min-width: 100% !important;
+          min-height: 100vh !important;
+          max-width: none !important;
           background: ${COLORS.background};
+          overflow-x: hidden;
         }
-        * { box-sizing: inherit; }
+
+        #root {
+          display: block !important;
+          text-align: left !important;
+        }
+
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        button, input, textarea {
+          font-family: inherit;
+        }
+
         @keyframes pulse {
           0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.06); opacity: 0.8; }
+          50% { transform: scale(1.06); opacity: 0.82; }
           100% { transform: scale(1); opacity: 1; }
         }
+
         .spin-animation {
           animation: pulse 1.4s infinite;
+        }
+
+        @media (max-width: 860px) {
+          .desktop-grid-2 {
+            grid-template-columns: 1fr !important;
+          }
+
+          .desktop-grid-3 {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
 
       <div
         style={{
           display: "flex",
+          width: "100%",
           minHeight: "100vh",
           backgroundColor: COLORS.background,
-          fontFamily:
-            "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           color: COLORS.textMain,
+          textAlign: "left",
         }}
       >
         {isMobile && sidebarOpen && (
@@ -351,8 +354,7 @@ export default function App() {
         <div
           style={{
             flex: 1,
-            display: "flex",
-            flexDirection: "column",
+            minWidth: 0,
             width: isMobile ? "100%" : "calc(100% - 260px)",
             minHeight: "100vh",
           }}
@@ -361,7 +363,7 @@ export default function App() {
             <div
               style={{
                 backgroundColor: COLORS.surface,
-                padding: "16px 20px",
+                padding: "14px 18px",
                 display: "flex",
                 alignItems: "center",
                 boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
@@ -382,10 +384,11 @@ export default function App() {
               >
                 <Menu size={24} />
               </button>
+
               <span
                 style={{
-                  marginLeft: "16px",
-                  fontWeight: "bold",
+                  marginLeft: "14px",
+                  fontWeight: 800,
                   color: COLORS.primary,
                 }}
               >
@@ -394,53 +397,49 @@ export default function App() {
             </div>
           )}
 
-          <main style={{ padding: isMobile ? "20px" : "40px", flex: 1 }}>
-            {sysError && (
-              <MessageBox type="error" text={sysError} />
-            )}
-
-            {sysMsg && (
-              <MessageBox type="success" text={sysMsg} />
-            )}
+          <main
+            style={{
+              width: "100%",
+              maxWidth: "1180px",
+              margin: "0 auto",
+              padding: isMobile ? "20px" : "40px",
+            }}
+          >
+            {sysError && <MessageBox type="error" text={sysError} />}
+            {sysMsg && <MessageBox type="success" text={sysMsg} />}
 
             {currentTab === "auth" && (
               <AuthView
                 setSysError={setSysError}
                 setSysMsg={setSysMsg}
-                onLoginSuccess={() => setCurrentTab("dashboard")}
+                onLoginSuccess={() => {
+                  setCurrentTab("dashboard");
+                }}
               />
             )}
 
             {currentTab === "jobs" && <JobBoardView isMobile={isMobile} />}
-
-            {currentTab === "campus" && <CampusView isMobile={isMobile} />}
-
+            {currentTab === "campus" && <CampusView />}
             {currentTab === "dashboard" && (
               <DashboardView
                 isMobile={isMobile}
-                setCurrentTab={handleTabClick}
                 currentUser={currentUser}
+                resumeRecords={resumeRecords}
+                recordsLoading={recordsLoading}
+                setCurrentTab={handleTabClick}
               />
             )}
-
             {currentTab === "upload" && (
               <UploadView
-                isMobile={isMobile}
                 setSysError={setSysError}
                 setSysMsg={setSysMsg}
                 isAnalyzing={isAnalyzing}
                 setIsAnalyzing={setIsAnalyzing}
                 currentUser={currentUser}
+                onRecordCreated={handleRecordCreated}
               />
             )}
-
-            {currentTab === "architecture" && (
-              <ArchitectureView isMobile={isMobile} />
-            )}
-
-            {currentTab === "settings" && (
-              <SettingsView currentUser={currentUser} />
-            )}
+            {currentTab === "settings" && <SettingsView currentUser={currentUser} />}
           </main>
         </div>
 
@@ -450,9 +449,6 @@ export default function App() {
   );
 }
 
-// ==========================================
-// 5. Layout components
-// ==========================================
 function Sidebar({
   isMobile,
   sidebarOpen,
@@ -462,18 +458,18 @@ function Sidebar({
   handleLogout,
 }) {
   return (
-    <div
+    <aside
       style={{
         position: isMobile ? "fixed" : "sticky",
         top: 0,
         left: 0,
         height: "100vh",
         width: "260px",
+        flexShrink: 0,
         backgroundColor: COLORS.primary,
         color: COLORS.surface,
-        transition: "transform 0.3s ease",
-        transform:
-          isMobile && !sidebarOpen ? "translateX(-100%)" : "translateX(0)",
+        transition: "transform 0.25s ease",
+        transform: isMobile && !sidebarOpen ? "translateX(-100%)" : "translateX(0)",
         zIndex: 50,
         display: "flex",
         flexDirection: "column",
@@ -483,25 +479,26 @@ function Sidebar({
       <div
         style={{
           padding: "24px",
-          fontSize: "1.15rem",
-          fontWeight: "bold",
+          fontSize: "1.08rem",
+          fontWeight: 900,
           display: "flex",
           alignItems: "center",
           gap: "10px",
           borderBottom: `1px solid ${COLORS.secondary}`,
+          lineHeight: "1.35",
         }}
       >
         <Cloud size={28} color={COLORS.accent} />
-        <span>AI 雲端求職平台</span>
+        <span>雲端智慧履歷系統</span>
       </div>
 
       <nav
         style={{
           flex: 1,
-          padding: "20px 0",
+          padding: "18px 0",
           display: "flex",
           flexDirection: "column",
-          gap: "5px",
+          gap: "4px",
         }}
       >
         <SideLabel text="公開功能" />
@@ -517,12 +514,6 @@ function Sidebar({
           isActive={currentTab === "campus"}
           onClick={() => handleTabClick("campus")}
         />
-        <NavItem
-          icon={<Cloud />}
-          label="雲端系統架構"
-          isActive={currentTab === "architecture"}
-          onClick={() => handleTabClick("architecture")}
-        />
 
         <SideLabel text="會員專屬" />
         <NavItem
@@ -533,32 +524,29 @@ function Sidebar({
         />
         <NavItem
           icon={<Upload />}
-          label="履歷上傳與 AI 分析"
+          label="履歷上傳分析"
           isActive={currentTab === "upload"}
           onClick={() => handleTabClick("upload")}
         />
       </nav>
 
-      <div
-        style={{
-          padding: "20px",
-          borderTop: `1px solid ${COLORS.secondary}`,
-        }}
-      >
+      <div style={{ padding: "20px", borderTop: `1px solid ${COLORS.secondary}` }}>
         {currentUser ? (
           <>
             <div
               style={{
-                marginBottom: "16px",
-                fontSize: "0.85rem",
-                color: COLORS.accent,
+                marginBottom: "14px",
+                fontSize: "0.83rem",
+                color: "#93C5FD",
                 display: "flex",
-                alignItems: "center",
+                alignItems: "flex-start",
                 gap: "8px",
                 wordBreak: "break-all",
+                lineHeight: 1.4,
               }}
             >
-              <User size={16} /> {currentUser.email}
+              <User size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>{currentUser.email}</span>
             </div>
 
             <NavItem
@@ -593,7 +581,7 @@ function Sidebar({
           </button>
         )}
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -601,10 +589,11 @@ function SideLabel({ text }) {
   return (
     <div
       style={{
-        padding: "18px 24px 8px 24px",
-        fontSize: "0.78rem",
+        padding: "16px 24px 7px",
+        fontSize: "0.76rem",
         color: "#94A3B8",
-        fontWeight: "bold",
+        fontWeight: 800,
+        letterSpacing: "0.04em",
       }}
     >
       {text}
@@ -622,12 +611,13 @@ function NavItem({ icon, label, isActive, onClick }) {
         gap: "12px",
         width: "100%",
         padding: "12px 24px",
-        backgroundColor: isActive ? "rgba(255,255,255,0.1)" : "transparent",
+        backgroundColor: isActive ? "rgba(255,255,255,0.12)" : "transparent",
         color: COLORS.surface,
         border: "none",
         textAlign: "left",
         cursor: "pointer",
-        fontSize: "1rem",
+        fontSize: "0.98rem",
+        fontWeight: isActive ? 800 : 600,
       }}
     >
       {icon}
@@ -638,22 +628,29 @@ function NavItem({ icon, label, isActive, onClick }) {
 
 function MessageBox({ type, text }) {
   const isError = type === "error";
+
   return (
     <div
       style={{
         padding: "12px 16px",
         backgroundColor: isError ? "#FEF2F2" : "#ECFDF5",
         color: isError ? COLORS.error : COLORS.success,
-        borderRadius: "8px",
+        borderRadius: "10px",
         marginBottom: "20px",
         display: "flex",
-        alignItems: "center",
+        alignItems: "flex-start",
         gap: "8px",
         border: `1px solid ${isError ? "#FECACA" : "#A7F3D0"}`,
+        lineHeight: 1.55,
+        textAlign: "left",
       }}
     >
-      {isError ? <AlertCircle size={18} /> : <CheckCircle size={18} />}
-      {text}
+      {isError ? (
+        <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+      ) : (
+        <CheckCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+      )}
+      <span>{text}</span>
     </div>
   );
 }
@@ -664,33 +661,27 @@ function LoadingScreen() {
       style={{
         display: "flex",
         minHeight: "100vh",
+        width: "100%",
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "column",
         backgroundColor: COLORS.primary,
         color: COLORS.surface,
+        textAlign: "center",
       }}
     >
-      <Cloud
-        size={60}
-        color={COLORS.accent}
-        className="spin-animation"
-        style={{ marginBottom: "20px" }}
-      />
-      <h2>系統載入中...</h2>
-      <p style={{ opacity: 0.75 }}>正在連線至 Firebase Authentication</p>
+      <Cloud size={60} color={COLORS.accent} className="spin-animation" />
+      <h2 style={{ marginBottom: 8 }}>系統載入中...</h2>
+      <p style={{ opacity: 0.75, margin: 0 }}>正在連線至 Firebase Authentication</p>
     </div>
   );
 }
 
-// ==========================================
-// 6. Auth
-// ==========================================
 function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!account || !password) {
@@ -703,14 +694,12 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     setSysError("");
     setSysMsg("");
 
     try {
-      if (!auth) {
-        throw new Error("Firebase 尚未正確初始化。");
-      }
+      if (!auth) throw new Error("Firebase 尚未正確初始化。");
 
       if (isLoginMode) {
         await signInWithEmailAndPassword(auth, account, password);
@@ -740,67 +729,59 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
           setSysError("操作失敗：" + err.message);
       }
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: "420px", margin: "40px auto" }}>
-      <div style={{ ...STYLES.card, textAlign: "center", padding: "40px" }}>
-        <Cloud
-          size={48}
-          color={COLORS.primary}
-          style={{ marginBottom: "16px" }}
-        />
+    <div style={{ maxWidth: "430px", margin: "40px auto" }}>
+      <div style={{ ...STYLES.card, padding: "38px" }}>
+        <div style={{ textAlign: "center", marginBottom: "24px" }}>
+          <Cloud size={48} color={COLORS.primary} />
+          <h2 style={{ margin: "14px 0 8px", color: COLORS.primary }}>
+            {isLoginMode ? "登入會員" : "註冊新帳號"}
+          </h2>
+          <p style={{ color: COLORS.textMuted, margin: 0, lineHeight: 1.6 }}>
+            登入後可使用履歷 AI 分析與個人化職缺推薦。
+          </p>
+        </div>
 
-        <h2 style={{ margin: "0 0 8px 0", color: COLORS.primary }}>
-          {isLoginMode ? "登入會員" : "註冊新帳號"}
-        </h2>
-
-        <p
-          style={{
-            color: COLORS.textMuted,
-            marginBottom: "24px",
-            fontSize: "0.9rem",
-          }}
-        >
-          登入後可使用履歷 AI 分析與個人化職缺推薦。
-        </p>
-
+        <label style={{ fontWeight: 700, color: COLORS.primary }}>電子信箱</label>
         <input
           type="email"
-          placeholder="電子信箱"
+          placeholder="example@email.com"
           value={account}
           onChange={(e) => setAccount(e.target.value)}
-          style={STYLES.input}
+          style={{ ...STYLES.input, marginTop: 8, marginBottom: 16 }}
         />
 
+        <label style={{ fontWeight: 700, color: COLORS.primary }}>密碼</label>
         <input
           type="password"
-          placeholder="密碼至少 6 碼"
+          placeholder="至少 6 碼"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          style={STYLES.input}
+          style={{ ...STYLES.input, marginTop: 8, marginBottom: 18 }}
         />
 
         <button
-          style={{ ...STYLES.button, width: "100%", marginTop: "10px" }}
+          style={{ ...STYLES.button, width: "100%" }}
           onClick={handleSubmit}
-          disabled={isLoading}
+          disabled={isSubmitting}
         >
-          {isLoading ? "處理中..." : isLoginMode ? "登入系統" : "註冊帳號"}
+          {isSubmitting ? "處理中..." : isLoginMode ? "登入系統" : "註冊帳號"}
         </button>
 
         <div
           style={{
             marginTop: "20px",
-            fontSize: "0.9rem",
+            fontSize: "0.92rem",
             color: COLORS.textMuted,
+            textAlign: "center",
           }}
         >
           {isLoginMode ? "還沒有帳號？" : "已有帳號？"}
-
           <button
             onClick={() => {
               setIsLoginMode(!isLoginMode);
@@ -812,7 +793,7 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
               border: "none",
               color: COLORS.accent,
               cursor: "pointer",
-              fontWeight: "bold",
+              fontWeight: 800,
             }}
           >
             {isLoginMode ? "立即註冊" : "返回登入"}
@@ -823,133 +804,343 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
   );
 }
 
-// ==========================================
-// 7. Views
-// ==========================================
 function JobBoardView({ isMobile }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [category, setCategory] = useState("全部");
 
-  const keyword = searchTerm.toLowerCase();
+  const categories = useMemo(() => {
+    return ["全部", ...Array.from(new Set(PUBLIC_JOBS.map((job) => job.category)))];
+  }, []);
 
-  const filteredJobs = PUBLIC_JOBS.filter((job) => {
-    return (
-      job.title.toLowerCase().includes(keyword) ||
-      job.company.toLowerCase().includes(keyword) ||
-      job.location.toLowerCase().includes(keyword) ||
-      job.reqSkills.some((skill) => skill.toLowerCase().includes(keyword))
-    );
-  });
+  const filteredJobs = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+
+    return PUBLIC_JOBS.filter((job) => {
+      const matchCategory = category === "全部" || job.category === category;
+      const matchKeyword =
+        !keyword ||
+        job.title.toLowerCase().includes(keyword) ||
+        job.company.toLowerCase().includes(keyword) ||
+        job.location.toLowerCase().includes(keyword) ||
+        job.category.toLowerCase().includes(keyword) ||
+        job.reqSkills.some((skill) => skill.toLowerCase().includes(keyword));
+
+      return matchCategory && matchKeyword;
+    });
+  }, [searchTerm, category]);
 
   return (
     <div>
-      <h2 style={{ ...STYLES.title, fontSize: "1.8rem" }}>最新職缺看板</h2>
+      <PageHeader
+        title="最新職缺看板"
+        description="公開瀏覽多元職缺。登入後可上傳履歷，使用 Gemini AI 產生個人化職缺推薦。"
+      />
 
-      <p style={{ color: COLORS.textMuted, marginBottom: "20px" }}>
-        可先瀏覽公開職缺；登入後上傳履歷，系統會透過 Gemini AI 產生個人化推薦。
+      <div style={{ ...STYLES.card, marginBottom: "22px" }}>
+        <div
+          className="desktop-grid-2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.5fr 0.8fr",
+            gap: "14px",
+            alignItems: "end",
+          }}
+        >
+          <div>
+            <label style={{ fontWeight: 800, color: COLORS.primary }}>搜尋職缺</label>
+            <div
+              style={{
+                marginTop: 8,
+                display: "flex",
+                gap: "10px",
+                alignItems: "center",
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: "10px",
+                padding: "0 12px",
+                backgroundColor: COLORS.surface,
+              }}
+            >
+              <Search color={COLORS.textMuted} size={20} />
+              <input
+                type="text"
+                placeholder="搜尋職缺、公司、地點或技能，例如 React、行銷、資料分析"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  ...STYLES.input,
+                  margin: 0,
+                  border: "none",
+                  paddingLeft: 0,
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontWeight: 800, color: COLORS.primary }}>職缺類別</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              style={{
+                ...STYLES.input,
+                marginTop: 8,
+                marginBottom: 0,
+                cursor: "pointer",
+              }}
+            >
+              {categories.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="desktop-grid-3"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: "18px",
+        }}
+      >
+        {filteredJobs.map((job) => (
+          <JobCard key={job.id} job={job} />
+        ))}
+
+        {filteredJobs.length === 0 && (
+          <div style={{ ...STYLES.card, gridColumn: "1 / -1", textAlign: "left" }}>
+            <p style={{ margin: 0, color: COLORS.textMuted }}>
+              找不到符合條件的職缺，請嘗試更換關鍵字或類別。
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function JobCard({ job }) {
+  return (
+    <div
+      style={{
+        ...STYLES.card,
+        marginBottom: 0,
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "260px",
+      }}
+    >
+      <div style={{ marginBottom: 12 }}>
+        <span style={tagStyle(COLORS.accent)}>{job.category}</span>
+      </div>
+
+      <h3 style={{ margin: "0 0 8px", color: COLORS.primary, fontSize: "1.08rem" }}>
+        {job.title}
+      </h3>
+
+      <p style={{ margin: "0 0 14px", color: COLORS.textMuted, fontSize: "0.9rem", lineHeight: 1.5 }}>
+        {job.company} ‧ {job.location} ‧ {job.type}
       </p>
 
       <div
         style={{
-          ...STYLES.card,
           display: "flex",
-          gap: "10px",
-          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "6px",
+          marginBottom: "18px",
+          flex: 1,
         }}
       >
-        <Search color={COLORS.textMuted} />
-        <input
-          type="text"
-          placeholder="搜尋職缺、公司、地點或技能，例如 React、行銷、資料分析"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            ...STYLES.input,
-            margin: 0,
-            border: "none",
-            boxShadow: "none",
-          }}
-        />
+        {job.reqSkills.map((skill) => (
+          <span key={skill} style={tagStyle(COLORS.textMuted)}>
+            {skill}
+          </span>
+        ))}
+      </div>
+
+      <button
+        style={{
+          ...STYLES.button,
+          width: "100%",
+          backgroundColor: "#F8FAFC",
+          color: COLORS.primary,
+          border: `1px solid ${COLORS.border}`,
+        }}
+      >
+        查看職缺詳情
+      </button>
+    </div>
+  );
+}
+
+function DashboardView({
+  isMobile,
+  currentUser,
+  resumeRecords,
+  recordsLoading,
+  setCurrentTab,
+}) {
+  const latestRecord = resumeRecords[0];
+
+  const allMatchRates = resumeRecords
+    .flatMap((record) => record.recommendedJobs || [])
+    .map((job) => Number(job.matchRate || 0))
+    .filter((num) => num > 0);
+
+  const avgMatch =
+    allMatchRates.length > 0
+      ? Math.round(allMatchRates.reduce((a, b) => a + b, 0) / allMatchRates.length)
+      : 0;
+
+  const missingSkillCount = latestRecord?.missingSkills?.length || 0;
+  const recommendedCount = latestRecord?.recommendedJobs?.length || 0;
+
+  const statsCardStyle = {
+    ...STYLES.card,
+    textAlign: "left",
+    marginBottom: 0,
+  };
+
+  return (
+    <div>
+      <PageHeader
+        title="個人總覽"
+        description={`歡迎回來，${currentUser?.email || "使用者"}。這裡會顯示你的履歷分析紀錄、推薦職缺與技能缺口摘要。`}
+      />
+
+      <div
+        className="desktop-grid-3"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: "18px",
+          marginBottom: "24px",
+        }}
+      >
+        <StatCard icon={<FileText color={COLORS.accent} />} label="履歷分析紀錄" value={resumeRecords.length} />
+        <StatCard icon={<Briefcase color={COLORS.success} />} label="最新推薦職缺" value={recommendedCount} />
+        <StatCard icon={<BarChart2 color={COLORS.warning} />} label="平均適配度" value={avgMatch ? `${avgMatch}%` : "尚無"} />
+        <StatCard icon={<Target color={COLORS.error} />} label="最新技能缺口" value={missingSkillCount} />
       </div>
 
       <div
+        className="desktop-grid-2"
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+          gridTemplateColumns: "1.1fr 1fr",
           gap: "20px",
         }}
       >
-        {filteredJobs.map((job) => (
-          <div
-            key={job.id}
-            style={{
-              ...STYLES.card,
-              marginBottom: 0,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <h3
-              style={{
-                margin: "0 0 8px 0",
-                color: COLORS.primary,
-                fontSize: "1.1rem",
-              }}
-            >
-              {job.title}
-            </h3>
+        <div style={statsCardStyle}>
+          <h3 style={STYLES.title}>
+            <Upload size={20} /> 快速操作
+          </h3>
 
-            <p
-              style={{
-                margin: "0 0 12px 0",
-                color: COLORS.textMuted,
-                fontSize: "0.9rem",
-              }}
-            >
-              {job.company} ‧ {job.location} ‧ {job.type}
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "6px",
-                marginBottom: "20px",
-                flex: 1,
-              }}
-            >
-              {job.reqSkills.map((skill) => (
-                <span key={skill} style={tagStyle(COLORS.textMuted)}>
-                  {skill}
-                </span>
-              ))}
-            </div>
-
-            <button
-              style={{
-                ...STYLES.button,
-                backgroundColor: "#F8FAFC",
-                color: COLORS.primary,
-                border: `1px solid ${COLORS.border}`,
-              }}
-            >
-              查看職缺詳情
-            </button>
-          </div>
-        ))}
-
-        {filteredJobs.length === 0 && (
-          <p
-            style={{
-              gridColumn: "1 / -1",
-              textAlign: "center",
-              color: COLORS.textMuted,
-              padding: "40px",
-            }}
-          >
-            找不到符合條件的職缺。
+          <p style={{ color: COLORS.textMuted, lineHeight: 1.7, marginTop: 0 }}>
+            上傳履歷檔案並貼上履歷文字後，系統會透過 Gemini API 產生技能擷取、技能缺口、履歷優化建議與職缺推薦。
           </p>
+
+          <button style={{ ...STYLES.button, marginTop: 8 }} onClick={() => setCurrentTab("upload")}>
+            前往履歷分析
+          </button>
+        </div>
+
+        <div style={statsCardStyle}>
+          <h3 style={STYLES.title}>
+            <Star size={20} /> 最新分析摘要
+          </h3>
+
+          {latestRecord ? (
+            <>
+              <p style={{ margin: "0 0 12px", color: COLORS.textMuted, lineHeight: 1.7 }}>
+                檔案名稱：<strong style={{ color: COLORS.primary }}>{latestRecord.fileName || "未命名履歷"}</strong>
+              </p>
+
+              <p style={{ margin: "0 0 14px", color: COLORS.textMuted, lineHeight: 1.7 }}>
+                {latestRecord.nlpSummary || "此履歷已完成 AI 分析。"}
+              </p>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {(latestRecord.skills || []).slice(0, 6).map((skill) => (
+                  <span key={skill} style={tagStyle(COLORS.success)}>
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p style={{ margin: 0, color: COLORS.textMuted, lineHeight: 1.7 }}>
+              尚未有履歷分析紀錄。請先前往「履歷上傳分析」建立第一筆紀錄。
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div style={{ ...STYLES.card, marginTop: 22 }}>
+        <h3 style={STYLES.title}>
+          <FileText size={20} /> 履歷分析紀錄
+        </h3>
+
+        {recordsLoading ? (
+          <p style={{ color: COLORS.textMuted }}>正在讀取紀錄...</p>
+        ) : resumeRecords.length === 0 ? (
+          <p style={{ color: COLORS.textMuted, margin: 0 }}>
+            目前尚無履歷紀錄。完成一次 AI 分析後，紀錄會顯示在這裡。
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {resumeRecords.slice(0, 5).map((record) => (
+              <div
+                key={record.id || `${record.fileName}-${record.createdAt}`}
+                style={{
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 12,
+                  padding: 16,
+                  backgroundColor: "#FBFDFF",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 10,
+                  }}
+                >
+                  <div>
+                    <strong style={{ color: COLORS.primary }}>{record.fileName || "未命名履歷"}</strong>
+                    <p style={{ margin: "6px 0 0", color: COLORS.textMuted, fontSize: "0.9rem" }}>
+                      {record.createdAt ? new Date(record.createdAt).toLocaleString() : "無時間紀錄"}
+                    </p>
+                  </div>
+
+                  <span style={tagStyle(COLORS.accent)}>
+                    推薦 {record.recommendedJobs?.length || 0} 個職缺
+                  </span>
+                </div>
+
+                <p style={{ color: COLORS.textMuted, lineHeight: 1.6, marginBottom: 0 }}>
+                  {(record.nlpSummary || "已完成 AI 履歷分析。").slice(0, 120)}
+                  {(record.nlpSummary || "").length > 120 ? "..." : ""}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value }) {
+  return (
+    <div style={{ ...STYLES.card, textAlign: "left", marginBottom: 0 }}>
+      <div style={{ marginBottom: 14 }}>{icon}</div>
+      <div style={{ fontSize: "1.75rem", fontWeight: 900, color: COLORS.primary, lineHeight: 1 }}>
+        {value}
+      </div>
+      <div style={{ marginTop: 8, color: COLORS.textMuted, fontSize: "0.92rem" }}>{label}</div>
     </div>
   );
 }
@@ -960,6 +1151,7 @@ function UploadView({
   isAnalyzing,
   setIsAnalyzing,
   currentUser,
+  onRecordCreated,
 }) {
   const [file, setFile] = useState(null);
   const [resumeText, setResumeText] = useState("");
@@ -967,7 +1159,6 @@ function UploadView({
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
-
     if (!selectedFile) return;
 
     setFile(selectedFile);
@@ -1028,11 +1219,15 @@ function UploadView({
         createdAt: new Date().toISOString(),
       };
 
+      let savedRecord = finalResult;
+
       if (db) {
-        await addDoc(collection(db, "resumes"), finalResult);
+        const docRef = await addDoc(collection(db, "resumes"), finalResult);
+        savedRecord = { id: docRef.id, ...finalResult };
       }
 
-      setResult(finalResult);
+      setResult(savedRecord);
+      onRecordCreated(savedRecord);
       setSysMsg("Gemini AI 履歷分析完成！分析結果已儲存至 Firestore。");
     } catch (error) {
       console.error(error);
@@ -1044,25 +1239,25 @@ function UploadView({
 
   return (
     <div>
-      <h2 style={{ ...STYLES.title, fontSize: "1.8rem" }}>
-        履歷上傳與 Gemini AI 深度分析
-      </h2>
+      <PageHeader
+        title="履歷上傳與 Gemini AI 深度分析"
+        description="選擇履歷檔案並貼上履歷文字，系統會呼叫 Gemini API 進行語義分析與職缺推薦。"
+      />
 
       <div
         style={{
           padding: "14px 16px",
           backgroundColor: "#FFFBEB",
-          color: COLORS.warning,
-          borderRadius: "8px",
+          color: "#92400E",
+          borderRadius: "10px",
           marginBottom: "20px",
           border: `1px solid #FDE68A`,
-          lineHeight: "1.6",
+          lineHeight: 1.7,
+          textAlign: "left",
         }}
       >
         <strong>Demo 說明：</strong>
-        Firebase Storage 目前需要 Blaze 方案，因此本 MVP 版本不會上傳檔案到
-        Storage；系統會記錄檔名，並將履歷文字送至 Gemini API 分析，結果存入
-        Firestore。
+        Firebase Storage 目前需要 Blaze 方案，因此本 MVP 不上傳檔案至 Storage；系統會記錄檔名，並將履歷文字送至 Gemini API 分析，結果存入 Firestore。
       </div>
 
       {isAnalyzing && (
@@ -1071,98 +1266,100 @@ function UploadView({
             padding: "16px",
             backgroundColor: "#EFF6FF",
             color: COLORS.accent,
-            borderRadius: "8px",
+            borderRadius: "10px",
             marginBottom: "20px",
             border: `1px solid #BFDBFE`,
-            fontWeight: "bold",
+            fontWeight: 800,
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: "8px",
+            lineHeight: 1.6,
+            textAlign: "left",
           }}
         >
-          <Cloud className="spin-animation" size={20} />
+          <Cloud className="spin-animation" size={20} style={{ flexShrink: 0, marginTop: 2 }} />
           Gemini AI 正在分析履歷，請勿切換頁面。
         </div>
       )}
 
-      <div style={{ ...STYLES.card, textAlign: "center", padding: "40px 20px" }}>
-        <input
-          type="file"
-          id="resume-upload"
-          accept=".pdf,.png,.jpg,.jpeg"
-          onChange={handleFileChange}
-          style={{ display: "none" }}
-          disabled={isAnalyzing}
-        />
+      <div
+        className="desktop-grid-2"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "0.9fr 1.1fr",
+          gap: 20,
+          alignItems: "start",
+        }}
+      >
+        <div style={STYLES.card}>
+          <h3 style={STYLES.title}>
+            <Upload size={20} /> 選擇履歷檔案
+          </h3>
 
-        <label
-          htmlFor="resume-upload"
-          style={{
-            display: "inline-flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "12px",
-            padding: "40px",
-            border: `2px dashed ${COLORS.accent}`,
-            borderRadius: "12px",
-            cursor: isAnalyzing ? "not-allowed" : "pointer",
-            backgroundColor: "#EFF6FF",
-            color: COLORS.accent,
-            width: "100%",
-            maxWidth: "480px",
-            opacity: isAnalyzing ? 0.5 : 1,
-          }}
-        >
-          <Upload size={40} />
-          <span style={{ fontWeight: "bold" }}>點擊選擇履歷檔案</span>
-          <span style={{ fontSize: "0.85rem", color: COLORS.textMuted }}>
-            {file ? `已選擇：${file.name}` : "支援 PDF、PNG、JPG、JPEG"}
-          </span>
-        </label>
-      </div>
+          <input
+            type="file"
+            id="resume-upload"
+            accept=".pdf,.png,.jpg,.jpeg"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+            disabled={isAnalyzing}
+          />
 
-      <div style={STYLES.card}>
-        <label
-          style={{
-            display: "block",
-            marginBottom: "8px",
-            fontWeight: "bold",
-            color: COLORS.primary,
-          }}
-        >
-          貼上履歷文字內容
-        </label>
+          <label
+            htmlFor="resume-upload"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: "12px",
+              padding: "28px",
+              border: `2px dashed ${COLORS.accent}`,
+              borderRadius: "12px",
+              cursor: isAnalyzing ? "not-allowed" : "pointer",
+              backgroundColor: "#EFF6FF",
+              color: COLORS.accent,
+              opacity: isAnalyzing ? 0.5 : 1,
+              textAlign: "left",
+            }}
+          >
+            <Upload size={40} />
+            <strong>點擊選擇履歷檔案</strong>
+            <span style={{ fontSize: "0.9rem", color: COLORS.textMuted }}>
+              {file ? `已選擇：${file.name}` : "支援 PDF、PNG、JPG、JPEG"}
+            </span>
+          </label>
+        </div>
 
-        <textarea
-          value={resumeText}
-          onChange={(e) => setResumeText(e.target.value)}
-          disabled={isAnalyzing}
-          placeholder="請貼上履歷文字內容，例如：學歷、技能、專案經驗、工作經驗、證照、作品集等。這段內容會送至 Gemini API 進行 AI 分析。"
-          style={{
-            width: "100%",
-            minHeight: "190px",
-            padding: "14px",
-            borderRadius: "10px",
-            border: `1px solid ${COLORS.border}`,
-            outline: "none",
-            resize: "vertical",
-            lineHeight: "1.6",
-            fontFamily: "inherit",
-            fontSize: "0.95rem",
-          }}
-        />
+        <div style={STYLES.card}>
+          <h3 style={STYLES.title}>
+            <FileText size={20} /> 貼上履歷文字
+          </h3>
 
-        <div
-          style={{
-            marginTop: "20px",
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
+          <textarea
+            value={resumeText}
+            onChange={(e) => setResumeText(e.target.value)}
+            disabled={isAnalyzing}
+            placeholder="請貼上履歷文字內容，例如：學歷、技能、專案經驗、工作經驗、證照、作品集等。這段內容會送至 Gemini API 進行 AI 分析。"
+            style={{
+              width: "100%",
+              minHeight: "230px",
+              padding: "14px",
+              borderRadius: "10px",
+              border: `1px solid ${COLORS.border}`,
+              outline: "none",
+              resize: "vertical",
+              lineHeight: 1.7,
+              fontFamily: "inherit",
+              fontSize: "0.95rem",
+              textAlign: "left",
+            }}
+          />
+
           <button
             style={{
               ...STYLES.button,
-              minWidth: "230px",
+              marginTop: 16,
+              width: "100%",
               opacity: isAnalyzing ? 0.7 : 1,
               cursor: isAnalyzing ? "not-allowed" : "pointer",
             }}
@@ -1189,7 +1386,7 @@ function UploadView({
 
 function AnalysisResult({ result }) {
   return (
-    <div style={{ marginTop: "36px", display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "20px" }}>
       <div style={STYLES.card}>
         <h3 style={STYLES.title}>
           <CheckCircle size={20} /> Gemini AI 分析摘要
@@ -1199,98 +1396,66 @@ function AnalysisResult({ result }) {
           style={{
             margin: 0,
             color: COLORS.textMain,
-            lineHeight: "1.7",
+            lineHeight: 1.8,
             backgroundColor: "#EFF6FF",
             padding: "16px",
-            borderRadius: "8px",
+            borderRadius: "10px",
+            textAlign: "left",
           }}
         >
           {result.nlpSummary || "系統已根據履歷內容完成語義分析。"}
         </p>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-        <div style={{ ...STYLES.card, flex: 1, minWidth: "300px" }}>
-          <h3 style={STYLES.title}>
-            <BarChart2 size={20} /> 技能擷取
-          </h3>
+      <div
+        className="desktop-grid-2"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 20,
+        }}
+      >
+        <InfoListCard
+          icon={<BarChart2 size={20} />}
+          title="技能擷取"
+          items={result.skills}
+          color={COLORS.success}
+          emptyText="尚未偵測到明確技能。"
+        />
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {result.skills.length > 0 ? (
-              result.skills.map((skill) => (
-                <span key={skill} style={tagStyle(COLORS.success)}>
-                  {skill}
-                </span>
-              ))
-            ) : (
-              <span style={{ color: COLORS.textMuted }}>尚未偵測到明確技能。</span>
-            )}
-          </div>
-        </div>
-
-        <div style={{ ...STYLES.card, flex: 1, minWidth: "300px" }}>
-          <h3 style={STYLES.title}>
-            <Target size={20} /> 技能缺口分析
-          </h3>
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-            {result.missingSkills.length > 0 ? (
-              result.missingSkills.map((skill) => (
-                <span key={skill} style={tagStyle(COLORS.warning)}>
-                  {skill}
-                </span>
-              ))
-            ) : (
-              <span style={{ color: COLORS.textMuted }}>目前沒有明顯技能缺口。</span>
-            )}
-          </div>
-        </div>
+        <InfoListCard
+          icon={<Target size={20} />}
+          title="技能缺口分析"
+          items={result.missingSkills}
+          color={COLORS.warning}
+          emptyText="目前沒有明顯技能缺口。"
+        />
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-        <div style={{ ...STYLES.card, flex: 1, minWidth: "300px" }}>
-          <h3 style={STYLES.title}>
-            <Star size={20} /> 履歷亮點
-          </h3>
-
-          <ul style={listStyle}>
-            {result.resumeHighlights.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div style={{ ...STYLES.card, flex: 1, minWidth: "300px" }}>
-          <h3 style={STYLES.title}>
-            <AlertCircle size={20} /> 履歷問題
-          </h3>
-
-          <ul style={listStyle}>
-            {result.resumeProblems.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </div>
+      <div
+        className="desktop-grid-2"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 20,
+        }}
+      >
+        <BulletCard icon={<Star size={20} />} title="履歷亮點" items={result.resumeHighlights} />
+        <BulletCard icon={<AlertCircle size={20} />} title="履歷問題" items={result.resumeProblems} />
       </div>
 
-      <div style={STYLES.card}>
-        <h3 style={STYLES.title}>
-          <CheckCircle size={20} /> 履歷優化建議
-        </h3>
-
-        <ul style={listStyle}>
-          {result.resumeSuggestions.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
-        </ul>
-      </div>
+      <BulletCard
+        icon={<CheckCircle size={20} />}
+        title="履歷優化建議"
+        items={result.resumeSuggestions}
+      />
 
       <div style={STYLES.card}>
         <h3 style={STYLES.title}>
           <GraduationCap size={20} /> AI 職涯建議
         </h3>
 
-        <p style={{ margin: 0, lineHeight: "1.7", color: COLORS.textMain }}>
+        <p style={{ margin: 0, lineHeight: 1.8, color: COLORS.textMain, textAlign: "left" }}>
           {result.careerAdvice || "建議持續補強專案經驗與職缺關鍵技能。"}
         </p>
       </div>
@@ -1300,7 +1465,7 @@ function AnalysisResult({ result }) {
           <Briefcase size={20} /> 專屬職缺推薦
         </h3>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {(result.recommendedJobs || [])
             .sort((a, b) => (b.matchRate || 0) - (a.matchRate || 0))
             .map((job, index) => (
@@ -1311,6 +1476,7 @@ function AnalysisResult({ result }) {
                   borderRadius: "12px",
                   padding: "18px",
                   backgroundColor: "#FFFFFF",
+                  textAlign: "left",
                 }}
               >
                 <div
@@ -1322,23 +1488,11 @@ function AnalysisResult({ result }) {
                   }}
                 >
                   <div>
-                    <h4
-                      style={{
-                        margin: "0 0 6px 0",
-                        color: COLORS.primary,
-                        fontSize: "1.1rem",
-                      }}
-                    >
+                    <h4 style={{ margin: "0 0 6px", color: COLORS.primary, fontSize: "1.1rem" }}>
                       {job.title}
                     </h4>
 
-                    <p
-                      style={{
-                        margin: 0,
-                        color: COLORS.textMuted,
-                        fontSize: "0.9rem",
-                      }}
-                    >
+                    <p style={{ margin: 0, color: COLORS.textMuted, fontSize: "0.9rem", lineHeight: 1.5 }}>
                       {job.company} ‧ {job.location} ‧ {job.type || "全職 / 實習"}
                     </p>
                   </div>
@@ -1348,8 +1502,8 @@ function AnalysisResult({ result }) {
                       backgroundColor: "#ECFDF5",
                       color: COLORS.success,
                       padding: "8px 12px",
-                      borderRadius: "20px",
-                      fontWeight: "bold",
+                      borderRadius: "999px",
+                      fontWeight: 800,
                       height: "fit-content",
                     }}
                   >
@@ -1357,14 +1511,7 @@ function AnalysisResult({ result }) {
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    marginTop: "12px",
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                  }}
-                >
+                <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {(job.requiredSkills || []).map((skill) => (
                     <span key={skill} style={tagStyle(COLORS.accent)}>
                       {skill}
@@ -1374,11 +1521,11 @@ function AnalysisResult({ result }) {
 
                 <div
                   style={{
-                    marginTop: "12px",
+                    marginTop: 12,
                     backgroundColor: "#F8FAFC",
                     padding: "12px",
                     borderRadius: "8px",
-                    lineHeight: "1.6",
+                    lineHeight: 1.7,
                   }}
                 >
                   <strong style={{ color: COLORS.primary }}>推薦理由：</strong>
@@ -1386,18 +1533,11 @@ function AnalysisResult({ result }) {
                 </div>
 
                 {job.missingSkills && job.missingSkills.length > 0 && (
-                  <div style={{ marginTop: "12px" }}>
-                    <strong
-                      style={{
-                        display: "block",
-                        marginBottom: "8px",
-                        color: COLORS.textMuted,
-                      }}
-                    >
+                  <div style={{ marginTop: 12 }}>
+                    <strong style={{ display: "block", marginBottom: 8, color: COLORS.textMuted }}>
                       此職缺建議補強：
                     </strong>
-
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {job.missingSkills.map((skill) => (
                         <span key={skill} style={tagStyle(COLORS.warning)}>
                           {skill}
@@ -1414,63 +1554,44 @@ function AnalysisResult({ result }) {
   );
 }
 
-function DashboardView({ isMobile, setCurrentTab, currentUser }) {
-  const statsCardStyle = {
-    ...STYLES.card,
-    flex: 1,
-    minWidth: isMobile ? "100%" : "200px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "30px 20px",
-  };
-
+function InfoListCard({ icon, title, items = [], color, emptyText }) {
   return (
-    <div>
-      <h2 style={{ ...STYLES.title, fontSize: "1.8rem" }}>個人總覽</h2>
+    <div style={STYLES.card}>
+      <h3 style={STYLES.title}>
+        {icon} {title}
+      </h3>
 
-      <p style={{ color: COLORS.textMuted, marginBottom: "24px" }}>
-        歡迎回來，{currentUser?.email}。你可以上傳履歷並使用 Gemini AI 進行分析。
-      </p>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginBottom: "30px" }}>
-        <div style={statsCardStyle}>
-          <FileText color={COLORS.accent} size={32} style={{ marginBottom: "10px" }} />
-          <h3 style={{ margin: 0, fontSize: "2rem", color: COLORS.primary }}>1</h3>
-          <span style={{ color: COLORS.textMuted, fontSize: "0.9rem" }}>履歷分析紀錄</span>
-        </div>
-
-        <div style={statsCardStyle}>
-          <Briefcase color={COLORS.success} size={32} style={{ marginBottom: "10px" }} />
-          <h3 style={{ margin: 0, fontSize: "2rem", color: COLORS.primary }}>3-5</h3>
-          <span style={{ color: COLORS.textMuted, fontSize: "0.9rem" }}>AI 推薦職缺</span>
-        </div>
-
-        <div style={statsCardStyle}>
-          <BarChart2 color={COLORS.warning} size={32} style={{ marginBottom: "10px" }} />
-          <h3 style={{ margin: 0, fontSize: "2rem", color: COLORS.primary }}>AI</h3>
-          <span style={{ color: COLORS.textMuted, fontSize: "0.9rem" }}>語義分析模式</span>
-        </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {items.length > 0 ? (
+          items.map((item) => (
+            <span key={item} style={tagStyle(color)}>
+              {item}
+            </span>
+          ))
+        ) : (
+          <span style={{ color: COLORS.textMuted }}>{emptyText}</span>
+        )}
       </div>
+    </div>
+  );
+}
 
-      <div style={STYLES.card}>
-        <h3 style={STYLES.title}>
-          <Upload size={20} /> 快速操作
-        </h3>
+function BulletCard({ icon, title, items = [] }) {
+  return (
+    <div style={STYLES.card}>
+      <h3 style={STYLES.title}>
+        {icon} {title}
+      </h3>
 
-        <p style={{ color: COLORS.textMuted, lineHeight: "1.6" }}>
-          點擊下方按鈕，上傳履歷檔案並貼上履歷文字。系統會透過 Gemini API
-          產生技能分析、技能缺口、履歷優化建議與職缺推薦。
-        </p>
-
-        <button
-          style={{ ...STYLES.button, marginTop: "20px" }}
-          onClick={() => setCurrentTab("upload")}
-        >
-          前往履歷分析
-        </button>
-      </div>
+      {items.length > 0 ? (
+        <ul style={listStyle}>
+          {items.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p style={{ margin: 0, color: COLORS.textMuted }}>目前沒有資料。</p>
+      )}
     </div>
   );
 }
@@ -1478,37 +1599,41 @@ function DashboardView({ isMobile, setCurrentTab, currentUser }) {
 function CampusView() {
   return (
     <div>
-      <h2 style={{ ...STYLES.title, fontSize: "1.8rem" }}>
-        校園求職與新鮮人支援
-      </h2>
+      <PageHeader
+        title="校園求職與新鮮人支援"
+        description="整理適合大學生與新鮮人的履歷撰寫、面試準備與求職方向。"
+      />
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-        <div style={{ ...STYLES.card, flex: 1, minWidth: "300px" }}>
+      <div
+        className="desktop-grid-2"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 20,
+        }}
+      >
+        <div style={STYLES.card}>
           <h3 style={{ ...STYLES.title, color: COLORS.success }}>
             <GraduationCap size={24} /> 履歷撰寫指南
           </h3>
 
           <ul style={listStyle}>
             <li>
-              <strong>STAR 原則：</strong>
-              用情境、任務、行動、結果描述專案或經歷。
+              <strong>STAR 原則：</strong>用情境、任務、行動、結果描述專案或經歷。
             </li>
             <li>
-              <strong>量化成果：</strong>
-              例如「提升 20% 效率」比「顯著提升效率」更有說服力。
+              <strong>量化成果：</strong>例如「提升 20% 效率」比「顯著提升效率」更有說服力。
             </li>
             <li>
-              <strong>一頁式履歷：</strong>
-              新鮮人履歷建議濃縮至一頁 A4。
+              <strong>一頁式履歷：</strong>新鮮人履歷建議濃縮至一頁 A4。
             </li>
             <li>
-              <strong>作品集連結：</strong>
-              資訊相關科系建議補上 GitHub、Demo 網站或專題影片。
+              <strong>作品集連結：</strong>資訊相關科系建議補上 GitHub、Demo 網站或專題影片。
             </li>
           </ul>
         </div>
 
-        <div style={{ ...STYLES.card, flex: 1, minWidth: "300px" }}>
+        <div style={STYLES.card}>
           <h3 style={{ ...STYLES.title, color: COLORS.warning }}>
             <MessageSquare size={24} /> 面試準備方向
           </h3>
@@ -1520,124 +1645,31 @@ function CampusView() {
             <li>準備 2 到 3 個反問問題，例如團隊文化與新人培訓方式。</li>
           </ul>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function ArchitectureView({ isMobile }) {
-  const boxStyle = {
-    backgroundColor: COLORS.surface,
-    border: `2px solid ${COLORS.accent}`,
-    borderRadius: "12px",
-    padding: "18px",
-    width: isMobile ? "100%" : "170px",
-    textAlign: "center",
-    fontWeight: "bold",
-    color: COLORS.primary,
-  };
+        <div style={STYLES.card}>
+          <h3 style={STYLES.title}>
+            <Briefcase size={22} /> 新鮮人求職建議
+          </h3>
 
-  const arrowStyle = {
-    color: COLORS.textMuted,
-    fontWeight: "bold",
-    fontSize: isMobile ? "1.5rem" : "1.2rem",
-  };
-
-  return (
-    <div>
-      <h2 style={{ ...STYLES.title, fontSize: "1.8rem" }}>
-        雲端系統架構展示
-      </h2>
-
-      <div style={STYLES.card}>
-        <p style={{ color: COLORS.textMuted, lineHeight: "1.7" }}>
-          本系統採用 React + Vercel + Gemini API + Firebase Authentication +
-          Firestore 的雲端架構。因 Firebase Storage 需要 Blaze 方案，本 MVP
-          改為不儲存履歷檔案，只記錄檔名與 AI 分析結果。
-        </p>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "14px",
-            marginTop: "30px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={boxStyle}>
-            <User size={26} />
-            <br />
-            使用者
-            <br />
-            <span style={{ fontSize: "0.8rem", color: COLORS.textMuted }}>
-              上傳檔名 + 貼履歷文字
-            </span>
-          </div>
-
-          <div style={arrowStyle}>→</div>
-
-          <div style={boxStyle}>
-            <Server size={26} />
-            <br />
-            React 前端
-            <br />
-            <span style={{ fontSize: "0.8rem", color: COLORS.textMuted }}>
-              Vercel 部署
-            </span>
-          </div>
-
-          <div style={arrowStyle}>→</div>
-
-          <div style={boxStyle}>
-            <Brain size={26} />
-            <br />
-            Gemini API
-            <br />
-            <span style={{ fontSize: "0.8rem", color: COLORS.textMuted }}>
-              AI 語義分析
-            </span>
-          </div>
-
-          <div style={arrowStyle}>→</div>
-
-          <div style={boxStyle}>
-            <Database size={26} />
-            <br />
-            Firestore
-            <br />
-            <span style={{ fontSize: "0.8rem", color: COLORS.textMuted }}>
-              分析結果儲存
-            </span>
-          </div>
+          <ul style={listStyle}>
+            <li>先鎖定 2 到 3 種職務方向，不要一次投太分散。</li>
+            <li>針對每個職缺調整履歷關鍵字，例如 React、資料分析、企劃、溝通協調。</li>
+            <li>面試時要能清楚說明「自己負責的部分」和「專題成果」。</li>
+          </ul>
         </div>
-      </div>
 
-      <div style={STYLES.card}>
-        <h3 style={STYLES.title}>
-          <Cloud size={20} /> 架構特色
-        </h3>
+        <div style={STYLES.card}>
+          <h3 style={STYLES.title}>
+            <Target size={22} /> 技能補強方向
+          </h3>
 
-        <ul style={listStyle}>
-          <li>
-            <strong>Firebase Authentication：</strong>
-            提供使用者登入與註冊功能。
-          </li>
-          <li>
-            <strong>Firestore：</strong>
-            儲存履歷分析結果、推薦職缺、技能缺口與使用者紀錄。
-          </li>
-          <li>
-            <strong>Vercel Serverless API：</strong>
-            透過 `/api/analyzeResume` 呼叫 Gemini API，避免 API Key 暴露在前端。
-          </li>
-          <li>
-            <strong>Gemini API：</strong>
-            負責履歷語義分析、技能擷取、技能缺口與職缺推薦。
-          </li>
-        </ul>
+          <ul style={listStyle}>
+            <li>工程職：GitHub、API、資料庫、部署經驗。</li>
+            <li>行銷職：文案、社群數據、活動企劃、SEO。</li>
+            <li>PM / 企劃職：流程圖、需求分析、簡報、跨部門溝通。</li>
+            <li>資料職：Excel、SQL、Python、資料視覺化。</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
@@ -1645,30 +1677,59 @@ function ArchitectureView({ isMobile }) {
 
 function SettingsView({ currentUser }) {
   return (
-    <div style={{ maxWidth: "560px" }}>
-      <h2 style={{ ...STYLES.title, fontSize: "1.8rem" }}>系統設定</h2>
+    <div style={{ maxWidth: 620 }}>
+      <PageHeader title="系統設定" description="查看目前登入帳號與系統狀態。" />
 
       <div style={STYLES.card}>
         <h3 style={STYLES.title}>
           <User size={20} /> 帳號資訊
         </h3>
 
-        <p style={{ color: COLORS.textMuted, lineHeight: "1.7" }}>
+        <p style={{ color: COLORS.textMuted, lineHeight: 1.7, marginTop: 0 }}>
           目前登入帳號：
           <strong style={{ color: COLORS.primary }}> {currentUser?.email}</strong>
         </p>
 
-        <p style={{ color: COLORS.textMuted, lineHeight: "1.7" }}>
-          MVP 階段使用 Firebase Authentication 管理帳號。若需要修改密碼，可於後續版本加入重設密碼功能。
+        <p style={{ color: COLORS.textMuted, lineHeight: 1.7, marginBottom: 0 }}>
+          本系統使用 Firebase Authentication 管理登入註冊，履歷分析結果會儲存在 Firestore。
         </p>
       </div>
     </div>
   );
 }
 
-// ==========================================
-// 8. Chat assistant
-// ==========================================
+function PageHeader({ title, description }) {
+  return (
+    <div style={{ marginBottom: 24, textAlign: "left" }}>
+      <h1
+        style={{
+          margin: "0 0 10px",
+          color: COLORS.primary,
+          fontSize: "clamp(1.65rem, 2.4vw, 2.15rem)",
+          lineHeight: 1.25,
+          textAlign: "left",
+        }}
+      >
+        {title}
+      </h1>
+
+      {description && (
+        <p
+          style={{
+            margin: 0,
+            color: COLORS.textMuted,
+            lineHeight: 1.7,
+            maxWidth: 820,
+            textAlign: "left",
+          }}
+        >
+          {description}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ChatAssistant({ isMobile }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -1681,7 +1742,6 @@ function ChatAssistant({ isMobile }) {
 
   const handleSend = (overrideText) => {
     const text = overrideText || input;
-
     if (!text.trim()) return;
 
     const newMessages = [...messages, { sender: "user", text }];
@@ -1690,7 +1750,7 @@ function ChatAssistant({ isMobile }) {
 
     setTimeout(() => {
       let reply =
-        "這是個好問題！建議先到「校園求職支援」查看基本方向，若想要更精準建議，請登入並使用履歷 AI 分析。";
+        "這是個好問題！建議先到「校園求職支援」查看基本方向；若想要更精準建議，請登入並使用履歷 AI 分析。";
 
       for (const [key, value] of Object.entries(CHAT_RESPONSES)) {
         if (text.includes(key.replace("？", "")) || key.includes(text)) {
@@ -1734,12 +1794,12 @@ function ChatAssistant({ isMobile }) {
     <div
       style={{
         position: "fixed",
-        bottom: isMobile ? "0" : "24px",
-        right: isMobile ? "0" : "24px",
-        width: isMobile ? "100%" : "360px",
-        height: isMobile ? "100%" : "460px",
+        bottom: isMobile ? 0 : 24,
+        right: isMobile ? 0 : 24,
+        width: isMobile ? "100%" : 360,
+        height: isMobile ? "100%" : 460,
         backgroundColor: COLORS.surface,
-        borderRadius: isMobile ? "0" : "12px",
+        borderRadius: isMobile ? 0 : 14,
         boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
         zIndex: 100,
         display: "flex",
@@ -1752,20 +1812,13 @@ function ChatAssistant({ isMobile }) {
           padding: "16px",
           backgroundColor: COLORS.primary,
           color: COLORS.surface,
-          borderRadius: isMobile ? "0" : "12px 12px 0 0",
+          borderRadius: isMobile ? 0 : "14px 14px 0 0",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
-        <span
-          style={{
-            fontWeight: "bold",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
+        <span style={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
           <Cloud size={18} /> AI 助理
         </span>
 
@@ -1785,12 +1838,13 @@ function ChatAssistant({ isMobile }) {
       <div
         style={{
           flex: 1,
-          padding: "16px",
+          padding: 16,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
-          gap: "12px",
+          gap: 12,
           backgroundColor: "#F8FAFC",
+          textAlign: "left",
         }}
       >
         {messages.map((message, index) => (
@@ -1803,14 +1857,13 @@ function ChatAssistant({ isMobile }) {
           >
             <div
               style={{
-                backgroundColor:
-                  message.sender === "user" ? COLORS.accent : "#E2E8F0",
-                color:
-                  message.sender === "user" ? COLORS.surface : COLORS.textMain,
+                backgroundColor: message.sender === "user" ? COLORS.accent : "#E2E8F0",
+                color: message.sender === "user" ? COLORS.surface : COLORS.textMain,
                 padding: "10px 14px",
-                borderRadius: "12px",
+                borderRadius: 12,
                 fontSize: "0.9rem",
-                lineHeight: "1.4",
+                lineHeight: 1.5,
+                textAlign: "left",
               }}
             >
               {message.text}
@@ -1819,14 +1872,7 @@ function ChatAssistant({ isMobile }) {
         ))}
 
         {messages.length === 1 && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-              marginTop: "10px",
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             {Object.keys(CHAT_RESPONSES).map((question) => (
               <button
                 key={question}
@@ -1835,9 +1881,9 @@ function ChatAssistant({ isMobile }) {
                   background: "none",
                   border: `1px solid ${COLORS.accent}`,
                   color: COLORS.accent,
-                  borderRadius: "20px",
-                  padding: "6px 12px",
-                  fontSize: "0.8rem",
+                  borderRadius: 999,
+                  padding: "7px 12px",
+                  fontSize: "0.82rem",
                   textAlign: "left",
                   cursor: "pointer",
                 }}
@@ -1849,14 +1895,7 @@ function ChatAssistant({ isMobile }) {
         )}
       </div>
 
-      <div
-        style={{
-          padding: "12px",
-          borderTop: `1px solid ${COLORS.border}`,
-          display: "flex",
-          gap: "8px",
-        }}
-      >
+      <div style={{ padding: 12, borderTop: `1px solid ${COLORS.border}`, display: "flex", gap: 8 }}>
         <input
           type="text"
           value={input}
@@ -1865,8 +1904,8 @@ function ChatAssistant({ isMobile }) {
           placeholder="輸入您的問題..."
           style={{
             flex: 1,
-            padding: "10px",
-            borderRadius: "20px",
+            padding: "10px 12px",
+            borderRadius: 999,
             border: `1px solid ${COLORS.border}`,
             outline: "none",
           }}
@@ -1878,9 +1917,9 @@ function ChatAssistant({ isMobile }) {
             backgroundColor: COLORS.accent,
             color: COLORS.surface,
             border: "none",
-            width: "40px",
-            height: "40px",
-            borderRadius: "20px",
+            width: 40,
+            height: 40,
+            borderRadius: 20,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
