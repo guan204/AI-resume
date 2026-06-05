@@ -14,7 +14,7 @@ function extractJson(text) {
   const lastBrace = cleaned.lastIndexOf("}");
 
   if (firstBrace === -1 || lastBrace === -1) {
-    throw new Error("Gemini 回傳內容不是有效 JSON");
+    throw new Error("回傳內容不是有效 JSON");
   }
 
   return cleaned.slice(firstBrace, lastBrace + 1);
@@ -43,8 +43,14 @@ export default async function handler(req, res) {
     }
 
     const prompt = `
-你是一個「雲端智慧履歷分析與職缺推薦系統」的 AI 分析模組。
-請根據使用者提供的履歷內容，進行履歷分析、NLP 語義分析、技能缺口分析與職缺推薦。
+你是一個「履歷分析與職缺推薦系統」。
+請根據使用者提供的履歷內容，整理履歷重點、能力、可改善問題、職缺建議與職涯建議。
+
+重要限制：
+1. 回覆內容是給一般求職者看的，不要使用技術說明。
+2. 不要出現「自然語言處理」、「NLP」、「語義分析」、「模型」、「Gemini」、「API」、「系統透過某某技術」等字眼。
+3. 請用自然、專業、像職涯顧問的語氣。
+4. 請只回傳 JSON，不要使用 markdown，不要加說明文字。
 
 檔案名稱：
 ${fileName || "未提供"}
@@ -52,17 +58,15 @@ ${fileName || "未提供"}
 履歷內容：
 ${resumeText}
 
-請只回傳 JSON，不要使用 markdown，不要加說明文字。
-
-JSON 格式如下：
+請依照以下 JSON 格式回傳：
 
 {
-  "skills": ["技能1", "技能2", "技能3"],
+  "skills": ["能力1", "能力2", "能力3"],
   "resumeHighlights": ["履歷亮點1", "履歷亮點2", "履歷亮點3"],
-  "resumeProblems": ["履歷問題1", "履歷問題2", "履歷問題3"],
+  "resumeProblems": ["可改善問題1", "可改善問題2", "可改善問題3"],
   "resumeSuggestions": ["履歷優化建議1", "履歷優化建議2", "履歷優化建議3"],
   "careerAdvice": "一段適合大學生或新鮮人的職涯建議",
-  "missingSkills": ["缺少技能1", "缺少技能2", "缺少技能3"],
+  "missingSkills": ["建議補強能力1", "建議補強能力2", "建議補強能力3"],
   "recommendedJobs": [
     {
       "title": "職缺名稱",
@@ -70,16 +74,17 @@ JSON 格式如下：
       "location": "地點",
       "type": "全職 / 實習 / 兼職",
       "matchRate": 85,
-      "requiredSkills": ["需求技能1", "需求技能2"],
-      "reason": "推薦原因",
-      "missingSkills": ["缺少技能1"]
+      "requiredSkills": ["需求能力1", "需求能力2"],
+      "reason": "推薦原因，請用使用者看得懂的方式說明",
+      "missingSkills": ["建議補強能力1"]
     }
   ],
-  "nlpSummary": "用一段話說明系統如何從履歷中理解使用者能力與職缺適配度"
+  "userSummary": "用一段話說明這份履歷的主要優勢、適合方向與需要補強的地方。不要提任何技術名稱。",
+  "nlpSummary": "內容同 userSummary，不要提任何技術名稱。"
 }
 
 分析要求：
-1. 技能必須盡量根據履歷內容推論，不要亂編過度誇張的技能。
+1. 能力請根據履歷內容推論，不要亂編過度誇張的能力。
 2. 推薦職缺以大學生、新鮮人、初階職位、實習職位為主。
 3. recommendedJobs 至少 3 筆，最多 5 筆。
 4. matchRate 必須是 0 到 100 的整數。
@@ -101,7 +106,7 @@ JSON 格式如下：
     console.error("Gemini API error:", error);
 
     return res.status(500).json({
-      error: "Gemini AI 分析失敗",
+      error: "履歷分析失敗",
       detail: error.message || "未知錯誤",
     });
   }

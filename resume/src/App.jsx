@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import {
   getFirestore,
   collection,
@@ -52,7 +52,7 @@ let db;
 let auth;
 
 try {
-  app = initializeApp(firebaseConfig);
+  app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   db = getFirestore(app);
   auth = getAuth(app);
 } catch (error) {
@@ -120,7 +120,7 @@ const PUBLIC_JOBS = [
   { id: 1, title: "前端工程師", company: "雲端科技股份有限公司", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["React", "JavaScript", "CSS", "Firebase"] },
   { id: 2, title: "後端工程師", company: "系統整合企業", location: "高雄市", type: "全職", category: "資訊工程", reqSkills: ["Node.js", "Python", "MySQL", "API"] },
   { id: 3, title: "資料分析助理", company: "大數據智庫", location: "新竹市", type: "實習 / 全職", category: "資料分析", reqSkills: ["Python", "SQL", "Excel", "資料視覺化"] },
-  { id: 4, title: "雲端系統助理工程師", company: "雲端整合服務公司", location: "台北市", type: "全職", category: "雲端系統", reqSkills: ["Firebase", "Cloud", "API", "資料庫"] },
+  { id: 4, title: "雲端系統助理工程師", company: "雲端整合服務公司", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["Firebase", "Cloud", "API", "資料庫"] },
   { id: 5, title: "軟體測試工程師", company: "全球軟體集團", location: "台中市", type: "全職", category: "資訊工程", reqSkills: ["QA", "測試案例", "JavaScript", "自動化測試"] },
   { id: 6, title: "UI/UX 設計師", company: "創新設計實驗室", location: "台中市", type: "全職", category: "設計", reqSkills: ["Figma", "Prototype", "User Research", "Wireframe"] },
   { id: 7, title: "數位行銷企劃", company: "星傳媒體集團", location: "台北市", type: "全職", category: "行銷", reqSkills: ["社群行銷", "SEO", "Google Analytics", "文案撰寫"] },
@@ -134,11 +134,11 @@ const PUBLIC_JOBS = [
   { id: 15, title: "供應鏈管理助理", company: "智慧物流公司", location: "桃園市", type: "全職", category: "供應鏈", reqSkills: ["庫存管理", "Excel", "資料整理", "流程優化"] },
   { id: 16, title: "遊戲企劃助理", company: "手機遊戲開發工作室", location: "台北市", type: "實習 / 全職", category: "遊戲企劃", reqSkills: ["遊戲企劃", "關卡設計", "文件撰寫", "使用者體驗"] },
   { id: 17, title: "研究助理", company: "校園產學合作中心", location: "屏東縣", type: "兼職 / 實習", category: "研究", reqSkills: ["資料蒐集", "文獻整理", "簡報製作", "報告撰寫"] },
-  { id: 18, title: "AI 應用助理工程師", company: "AI 新創實驗室", location: "台北市", type: "全職", category: "AI 應用", reqSkills: ["Python", "Prompt", "API", "資料處理"] },
+  { id: 18, title: "AI 應用助理工程師", company: "AI 新創實驗室", location: "台北市", type: "全職", category: "資訊工程", reqSkills: ["Python", "Prompt", "API", "資料處理"] },
 ];
 
 const CHAT_RESPONSES = {
-  "我適合什麼工作？": "建議先使用履歷 AI 分析，系統會根據你的技能、經歷與職缺條件產生較精準的推薦。如果還沒上傳履歷，可以先從公開職缺看板搜尋感興趣的職缺。",
+  "我適合什麼工作？": "建議先使用履歷分析功能，系統會根據你的技能、經歷與職缺條件產生較精準的推薦。如果還沒上傳履歷，可以先從公開職缺看板搜尋感興趣的工作。",
   "我的履歷缺少什麼？": "新鮮人履歷常見問題是缺少量化成果、專案角色不清楚、技能和職缺需求沒有對齊。建議把經歷改成具體成果，例如「完成 React 專題並部署至 Vercel」。",
   "新鮮人該怎麼準備？": "建議準備一頁式履歷、1 到 2 個可展示作品集、GitHub 或 Demo 連結，並針對目標職缺調整技能順序。",
 };
@@ -161,8 +161,24 @@ const listStyle = {
   textAlign: "left",
 };
 
+function makeUserFriendlySummary(text, fallback = "系統已完成履歷重點整理，並根據你的經歷產生適合的職缺建議。") {
+  if (!text || typeof text !== "string") return fallback;
+
+  return text
+    .replace(/自然語言處理技術/g, "履歷分析")
+    .replace(/自然語言處理/g, "履歷分析")
+    .replace(/NLP/g, "履歷分析")
+    .replace(/Gemini API/g, "分析功能")
+    .replace(/Gemini/g, "系統")
+    .replace(/模型/g, "系統")
+    .replace(/語義分析/g, "內容整理")
+    .replace(/技術/g, "功能")
+    .replace(/系統透過/g, "系統已根據")
+    .trim();
+}
+
 export default function App() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 860);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 900);
   const [authLoading, setAuthLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentTab, setCurrentTab] = useState("jobs");
@@ -195,7 +211,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 860);
+    const handleResize = () => setIsMobile(window.innerWidth <= 900);
     window.addEventListener("resize", handleResize);
 
     let unsubscribe = () => {};
@@ -223,7 +239,7 @@ export default function App() {
 
   const handleTabClick = (tab) => {
     if (isAnalyzing) {
-      setSysError("AI 分析進行中，請等待分析完成後再切換頁面。");
+      setSysError("履歷分析進行中，請等待完成後再切換頁面。");
       setTimeout(() => setSysError(""), 3000);
       return;
     }
@@ -249,7 +265,7 @@ export default function App() {
 
   const handleLogout = async () => {
     if (isAnalyzing) {
-      setSysError("AI 分析進行中，請等待完成後再登出。");
+      setSysError("履歷分析進行中，請等待完成後再登出。");
       return;
     }
 
@@ -282,20 +298,20 @@ export default function App() {
           overflow-x: hidden;
         }
 
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+        }
+
         #root {
           display: block !important;
           text-align: left !important;
-        }
-
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
         }
 
         * {
           box-sizing: border-box;
         }
 
-        button, input, textarea {
+        button, input, textarea, select {
           font-family: inherit;
         }
 
@@ -309,12 +325,10 @@ export default function App() {
           animation: pulse 1.4s infinite;
         }
 
-        @media (max-width: 860px) {
-          .desktop-grid-2 {
-            grid-template-columns: 1fr !important;
-          }
-
-          .desktop-grid-3 {
+        @media (max-width: 900px) {
+          .responsive-grid-2,
+          .responsive-grid-3,
+          .responsive-grid-4 {
             grid-template-columns: 1fr !important;
           }
         }
@@ -400,9 +414,8 @@ export default function App() {
           <main
             style={{
               width: "100%",
-              maxWidth: "1180px",
-              margin: "0 auto",
-              padding: isMobile ? "20px" : "40px",
+              margin: 0,
+              padding: isMobile ? "20px" : "36px",
             }}
           >
             {sysError && <MessageBox type="error" text={sysError} />}
@@ -418,11 +431,10 @@ export default function App() {
               />
             )}
 
-            {currentTab === "jobs" && <JobBoardView isMobile={isMobile} />}
+            {currentTab === "jobs" && <JobBoardView />}
             {currentTab === "campus" && <CampusView />}
             {currentTab === "dashboard" && (
               <DashboardView
-                isMobile={isMobile}
                 currentUser={currentUser}
                 resumeRecords={resumeRecords}
                 recordsLoading={recordsLoading}
@@ -672,7 +684,7 @@ function LoadingScreen() {
     >
       <Cloud size={60} color={COLORS.accent} className="spin-animation" />
       <h2 style={{ marginBottom: 8 }}>系統載入中...</h2>
-      <p style={{ opacity: 0.75, margin: 0 }}>正在連線至 Firebase Authentication</p>
+      <p style={{ opacity: 0.75, margin: 0 }}>正在確認登入狀態</p>
     </div>
   );
 }
@@ -690,7 +702,7 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
     }
 
     if (password.length < 6) {
-      setSysError("Firebase Authentication 要求密碼至少 6 碼。");
+      setSysError("密碼至少需要 6 碼。");
       return;
     }
 
@@ -699,7 +711,7 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
     setSysMsg("");
 
     try {
-      if (!auth) throw new Error("Firebase 尚未正確初始化。");
+      if (!auth) throw new Error("登入服務尚未正確啟用。");
 
       if (isLoginMode) {
         await signInWithEmailAndPassword(auth, account, password);
@@ -742,7 +754,7 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
             {isLoginMode ? "登入會員" : "註冊新帳號"}
           </h2>
           <p style={{ color: COLORS.textMuted, margin: 0, lineHeight: 1.6 }}>
-            登入後可使用履歷 AI 分析與個人化職缺推薦。
+            登入後可使用履歷分析與個人化職缺推薦。
           </p>
         </div>
 
@@ -804,7 +816,7 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
   );
 }
 
-function JobBoardView({ isMobile }) {
+function JobBoardView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("全部");
 
@@ -833,12 +845,12 @@ function JobBoardView({ isMobile }) {
     <div>
       <PageHeader
         title="最新職缺看板"
-        description="公開瀏覽多元職缺。登入後可上傳履歷，使用 Gemini AI 產生個人化職缺推薦。"
+        description="公開瀏覽多元職缺。登入後可上傳履歷，取得個人化職缺推薦。"
       />
 
       <div style={{ ...STYLES.card, marginBottom: "22px" }}>
         <div
-          className="desktop-grid-2"
+          className="responsive-grid-2"
           style={{
             display: "grid",
             gridTemplateColumns: "1.5fr 0.8fr",
@@ -897,7 +909,7 @@ function JobBoardView({ isMobile }) {
       </div>
 
       <div
-        className="desktop-grid-3"
+        className="responsive-grid-3"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
@@ -975,7 +987,6 @@ function JobCard({ job }) {
 }
 
 function DashboardView({
-  isMobile,
   currentUser,
   resumeRecords,
   recordsLoading,
@@ -996,12 +1007,6 @@ function DashboardView({
   const missingSkillCount = latestRecord?.missingSkills?.length || 0;
   const recommendedCount = latestRecord?.recommendedJobs?.length || 0;
 
-  const statsCardStyle = {
-    ...STYLES.card,
-    textAlign: "left",
-    marginBottom: 0,
-  };
-
   return (
     <div>
       <PageHeader
@@ -1010,7 +1015,7 @@ function DashboardView({
       />
 
       <div
-        className="desktop-grid-3"
+        className="responsive-grid-4"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
@@ -1025,20 +1030,20 @@ function DashboardView({
       </div>
 
       <div
-        className="desktop-grid-2"
+        className="responsive-grid-2"
         style={{
           display: "grid",
           gridTemplateColumns: "1.1fr 1fr",
           gap: "20px",
         }}
       >
-        <div style={statsCardStyle}>
+        <div style={STYLES.card}>
           <h3 style={STYLES.title}>
             <Upload size={20} /> 快速操作
           </h3>
 
           <p style={{ color: COLORS.textMuted, lineHeight: 1.7, marginTop: 0 }}>
-            上傳履歷檔案並貼上履歷文字後，系統會透過 Gemini API 產生技能擷取、技能缺口、履歷優化建議與職缺推薦。
+            上傳履歷檔案並貼上履歷文字後，系統會整理你的技能、履歷亮點、可改善問題與適合的職缺方向。
           </p>
 
           <button style={{ ...STYLES.button, marginTop: 8 }} onClick={() => setCurrentTab("upload")}>
@@ -1046,7 +1051,7 @@ function DashboardView({
           </button>
         </div>
 
-        <div style={statsCardStyle}>
+        <div style={STYLES.card}>
           <h3 style={STYLES.title}>
             <Star size={20} /> 最新分析摘要
           </h3>
@@ -1054,11 +1059,12 @@ function DashboardView({
           {latestRecord ? (
             <>
               <p style={{ margin: "0 0 12px", color: COLORS.textMuted, lineHeight: 1.7 }}>
-                檔案名稱：<strong style={{ color: COLORS.primary }}>{latestRecord.fileName || "未命名履歷"}</strong>
+                檔案名稱：
+                <strong style={{ color: COLORS.primary }}> {latestRecord.fileName || "未命名履歷"}</strong>
               </p>
 
               <p style={{ margin: "0 0 14px", color: COLORS.textMuted, lineHeight: 1.7 }}>
-                {latestRecord.nlpSummary || "此履歷已完成 AI 分析。"}
+                {makeUserFriendlySummary(latestRecord.userSummary || latestRecord.nlpSummary)}
               </p>
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -1086,7 +1092,7 @@ function DashboardView({
           <p style={{ color: COLORS.textMuted }}>正在讀取紀錄...</p>
         ) : resumeRecords.length === 0 ? (
           <p style={{ color: COLORS.textMuted, margin: 0 }}>
-            目前尚無履歷紀錄。完成一次 AI 分析後，紀錄會顯示在這裡。
+            目前尚無履歷紀錄。完成一次履歷分析後，紀錄會顯示在這裡。
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1121,8 +1127,8 @@ function DashboardView({
                 </div>
 
                 <p style={{ color: COLORS.textMuted, lineHeight: 1.6, marginBottom: 0 }}>
-                  {(record.nlpSummary || "已完成 AI 履歷分析。").slice(0, 120)}
-                  {(record.nlpSummary || "").length > 120 ? "..." : ""}
+                  {makeUserFriendlySummary(record.userSummary || record.nlpSummary).slice(0, 120)}
+                  {makeUserFriendlySummary(record.userSummary || record.nlpSummary).length > 120 ? "..." : ""}
                 </p>
               </div>
             ))}
@@ -1174,7 +1180,7 @@ function UploadView({
     }
 
     if (!resumeText || resumeText.trim().length < 20) {
-      setSysError("請貼上履歷文字內容，至少 20 個字，系統才能進行 Gemini AI 分析。");
+      setSysError("請貼上履歷文字內容，至少 20 個字，系統才能進行履歷分析。");
       return;
     }
 
@@ -1197,7 +1203,7 @@ function UploadView({
       const aiResult = await response.json();
 
       if (!response.ok) {
-        throw new Error(aiResult.error || aiResult.detail || "Gemini AI 分析失敗。");
+        throw new Error(aiResult.error || aiResult.detail || "履歷分析失敗。");
       }
 
       const finalResult = {
@@ -1215,6 +1221,7 @@ function UploadView({
         careerAdvice: aiResult.careerAdvice || "",
         missingSkills: aiResult.missingSkills || [],
         recommendedJobs: aiResult.recommendedJobs || [],
+        userSummary: makeUserFriendlySummary(aiResult.userSummary || aiResult.nlpSummary),
         nlpSummary: aiResult.nlpSummary || "",
         createdAt: new Date().toISOString(),
       };
@@ -1228,10 +1235,10 @@ function UploadView({
 
       setResult(savedRecord);
       onRecordCreated(savedRecord);
-      setSysMsg("Gemini AI 履歷分析完成！分析結果已儲存至 Firestore。");
+      setSysMsg("履歷分析完成！分析結果已儲存。");
     } catch (error) {
       console.error(error);
-      setSysError("AI 分析失敗：" + error.message);
+      setSysError("分析失敗：" + error.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -1240,8 +1247,8 @@ function UploadView({
   return (
     <div>
       <PageHeader
-        title="履歷上傳與 Gemini AI 深度分析"
-        description="選擇履歷檔案並貼上履歷文字，系統會呼叫 Gemini API 進行語義分析與職缺推薦。"
+        title="履歷上傳與分析"
+        description="選擇履歷檔案並貼上履歷文字，系統會整理技能、履歷亮點、可改善問題與適合的職缺方向。"
       />
 
       <div
@@ -1257,7 +1264,7 @@ function UploadView({
         }}
       >
         <strong>Demo 說明：</strong>
-        Firebase Storage 目前需要 Blaze 方案，因此本 MVP 不上傳檔案至 Storage；系統會記錄檔名，並將履歷文字送至 Gemini API 分析，結果存入 Firestore。
+        目前版本會記錄履歷檔名，並將你貼上的履歷文字進行分析；分析結果會儲存在系統中，方便之後查看紀錄。
       </div>
 
       {isAnalyzing && (
@@ -1278,12 +1285,12 @@ function UploadView({
           }}
         >
           <Cloud className="spin-animation" size={20} style={{ flexShrink: 0, marginTop: 2 }} />
-          Gemini AI 正在分析履歷，請勿切換頁面。
+          系統正在分析履歷，請勿切換頁面。
         </div>
       )}
 
       <div
-        className="desktop-grid-2"
+        className="responsive-grid-2"
         style={{
           display: "grid",
           gridTemplateColumns: "0.9fr 1.1fr",
@@ -1339,7 +1346,7 @@ function UploadView({
             value={resumeText}
             onChange={(e) => setResumeText(e.target.value)}
             disabled={isAnalyzing}
-            placeholder="請貼上履歷文字內容，例如：學歷、技能、專案經驗、工作經驗、證照、作品集等。這段內容會送至 Gemini API 進行 AI 分析。"
+            placeholder="請貼上履歷文字內容，例如：學歷、技能、專案經驗、工作經驗、證照、作品集等。"
             style={{
               width: "100%",
               minHeight: "230px",
@@ -1368,11 +1375,11 @@ function UploadView({
           >
             {isAnalyzing ? (
               <>
-                <Cloud className="spin-animation" size={18} /> Gemini AI 分析中
+                <Cloud className="spin-animation" size={18} /> 分析中
               </>
             ) : (
               <>
-                <Target size={18} /> 啟動 Gemini AI 分析
+                <Target size={18} /> 開始履歷分析
               </>
             )}
           </button>
@@ -1389,7 +1396,7 @@ function AnalysisResult({ result }) {
     <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "20px" }}>
       <div style={STYLES.card}>
         <h3 style={STYLES.title}>
-          <CheckCircle size={20} /> Gemini AI 分析摘要
+          <CheckCircle size={20} /> 分析摘要
         </h3>
 
         <p
@@ -1403,12 +1410,12 @@ function AnalysisResult({ result }) {
             textAlign: "left",
           }}
         >
-          {result.nlpSummary || "系統已根據履歷內容完成語義分析。"}
+          {makeUserFriendlySummary(result.userSummary || result.nlpSummary)}
         </p>
       </div>
 
       <div
-        className="desktop-grid-2"
+        className="responsive-grid-2"
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
@@ -1417,23 +1424,23 @@ function AnalysisResult({ result }) {
       >
         <InfoListCard
           icon={<BarChart2 size={20} />}
-          title="技能擷取"
+          title="已具備能力"
           items={result.skills}
           color={COLORS.success}
-          emptyText="尚未偵測到明確技能。"
+          emptyText="尚未整理到明確能力。"
         />
 
         <InfoListCard
           icon={<Target size={20} />}
-          title="技能缺口分析"
+          title="建議補強能力"
           items={result.missingSkills}
           color={COLORS.warning}
-          emptyText="目前沒有明顯技能缺口。"
+          emptyText="目前沒有明顯需要補強的能力。"
         />
       </div>
 
       <div
-        className="desktop-grid-2"
+        className="responsive-grid-2"
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
@@ -1441,7 +1448,7 @@ function AnalysisResult({ result }) {
         }}
       >
         <BulletCard icon={<Star size={20} />} title="履歷亮點" items={result.resumeHighlights} />
-        <BulletCard icon={<AlertCircle size={20} />} title="履歷問題" items={result.resumeProblems} />
+        <BulletCard icon={<AlertCircle size={20} />} title="可改善問題" items={result.resumeProblems} />
       </div>
 
       <BulletCard
@@ -1452,7 +1459,7 @@ function AnalysisResult({ result }) {
 
       <div style={STYLES.card}>
         <h3 style={STYLES.title}>
-          <GraduationCap size={20} /> AI 職涯建議
+          <GraduationCap size={20} /> 職涯建議
         </h3>
 
         <p style={{ margin: 0, lineHeight: 1.8, color: COLORS.textMain, textAlign: "left" }}>
@@ -1462,7 +1469,7 @@ function AnalysisResult({ result }) {
 
       <div style={STYLES.card}>
         <h3 style={STYLES.title}>
-          <Briefcase size={20} /> 專屬職缺推薦
+          <Briefcase size={20} /> 適合你的職缺
         </h3>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1507,7 +1514,7 @@ function AnalysisResult({ result }) {
                       height: "fit-content",
                     }}
                   >
-                    適配度 {job.matchRate || 0}%
+                    適合度 {job.matchRate || 0}%
                   </div>
                 </div>
 
@@ -1528,14 +1535,14 @@ function AnalysisResult({ result }) {
                     lineHeight: 1.7,
                   }}
                 >
-                  <strong style={{ color: COLORS.primary }}>推薦理由：</strong>
+                  <strong style={{ color: COLORS.primary }}>推薦原因：</strong>
                   <span> {job.reason}</span>
                 </div>
 
                 {job.missingSkills && job.missingSkills.length > 0 && (
                   <div style={{ marginTop: 12 }}>
                     <strong style={{ display: "block", marginBottom: 8, color: COLORS.textMuted }}>
-                      此職缺建議補強：
+                      建議補強：
                     </strong>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {job.missingSkills.map((skill) => (
@@ -1605,7 +1612,7 @@ function CampusView() {
       />
 
       <div
-        className="desktop-grid-2"
+        className="responsive-grid-2"
         style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
@@ -1691,7 +1698,7 @@ function SettingsView({ currentUser }) {
         </p>
 
         <p style={{ color: COLORS.textMuted, lineHeight: 1.7, marginBottom: 0 }}>
-          本系統使用 Firebase Authentication 管理登入註冊，履歷分析結果會儲存在 Firestore。
+          本系統使用帳號登入機制管理會員資料，履歷分析結果會儲存在系統中。
         </p>
       </div>
     </div>
@@ -1719,7 +1726,7 @@ function PageHeader({ title, description }) {
             margin: 0,
             color: COLORS.textMuted,
             lineHeight: 1.7,
-            maxWidth: 820,
+            maxWidth: 920,
             textAlign: "left",
           }}
         >
@@ -1735,7 +1742,7 @@ function ChatAssistant({ isMobile }) {
   const [messages, setMessages] = useState([
     {
       sender: "ai",
-      text: "您好！我是職涯 AI 助理。您可以問我履歷準備、新鮮人求職或適合職缺方向。",
+      text: "您好！我是職涯助理。您可以問我履歷準備、新鮮人求職或適合職缺方向。",
     },
   ]);
   const [input, setInput] = useState("");
@@ -1750,7 +1757,7 @@ function ChatAssistant({ isMobile }) {
 
     setTimeout(() => {
       let reply =
-        "這是個好問題！建議先到「校園求職支援」查看基本方向；若想要更精準建議，請登入並使用履歷 AI 分析。";
+        "這是個好問題！建議先到「校園求職支援」查看基本方向；若想要更精準建議，請登入並使用履歷分析。";
 
       for (const [key, value] of Object.entries(CHAT_RESPONSES)) {
         if (text.includes(key.replace("？", "")) || key.includes(text)) {
@@ -1819,7 +1826,7 @@ function ChatAssistant({ isMobile }) {
         }}
       >
         <span style={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 8 }}>
-          <Cloud size={18} /> AI 助理
+          <Cloud size={18} /> 職涯助理
         </span>
 
         <button
