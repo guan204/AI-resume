@@ -9,6 +9,9 @@ import {
   getDocs,
   query,
   where,
+  doc,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import {
   getAuth,
@@ -200,6 +203,9 @@ export default function App() {
   const [sysMsg, setSysMsg] = useState("");
   const [resumeRecords, setResumeRecords] = useState([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [userRole, setUserRole] = useState("jobseeker");
+  const [allResumeRecords, setAllResumeRecords] = useState([]);
 
   const loadResumeRecords = async (user) => {
     if (!db || !user?.uid) return;
@@ -222,6 +228,44 @@ export default function App() {
     }
   };
 
+  const loadUserProfile = async (user) => {
+    if (!db || !user?.uid) return null;
+
+    try {
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const profile = userSnap.data();
+
+        setUserProfile(profile);
+        setUserRole(profile.role || "jobseeker");
+
+        return profile;
+      }
+
+      const defaultProfile = {
+        email: user.email || "",
+        role: "jobseeker",
+        companyName: "",
+        createdAt: new Date().toISOString(),
+      };
+
+      await setDoc(userRef, defaultProfile);
+
+      setUserProfile(defaultProfile);
+      setUserRole("jobseeker");
+
+      return defaultProfile;
+    } catch (error) {
+      console.warn("讀取使用者角色失敗：", error);
+      setUserProfile(null);
+      setUserRole("jobseeker");
+      setSysError("讀取使用者身分失敗，系統將暫時以求職者模式顯示。");
+      return null;
+    }
+  };
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 900);
     window.addEventListener("resize", handleResize);
@@ -229,15 +273,24 @@ export default function App() {
     let unsubscribe = () => {};
 
     if (auth) {
-      unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe = onAuthStateChanged(auth, async (user) => {
         setCurrentUser(user || null);
-        setAuthLoading(false);
 
         if (user) {
-          loadResumeRecords(user);
+          const profile = await loadUserProfile(user);
+
+          if ((profile?.role || "jobseeker") === "jobseeker") {
+            await loadResumeRecords(user);
+          } else {
+            setResumeRecords([]);
+          }
         } else {
+          setUserProfile(null);
+          setUserRole("jobseeker");
           setResumeRecords([]);
         }
+
+        setAuthLoading(false);
       });
     } else {
       setAuthLoading(false);
@@ -256,12 +309,33 @@ export default function App() {
       return;
     }
 
-    const needLogin = ["dashboard", "upload", "settings"].includes(tab);
+    const needLogin = [
+      "dashboard",
+      "upload",
+      "settings",
+      "compare",
+      "employerDashboard",
+      "employerScreening",
+      "candidateList",
+    ].includes(tab);
 
     if (needLogin && !currentUser) {
       setSysError("請先登入或註冊，才能使用會員專屬功能。");
       setCurrentTab("auth");
       setSidebarOpen(false);
+      return;
+    }
+
+    const employerOnlyTabs = ["employerDashboard", "employerScreening", "candidateList"];
+    const jobseekerOnlyTabs = ["dashboard", "upload", "compare"];
+
+    if (employerOnlyTabs.includes(tab) && userRole !== "employer") {
+      setSysError("此功能僅限企業端帳號使用。");
+      return;
+    }
+
+    if (jobseekerOnlyTabs.includes(tab) && userRole === "employer") {
+      setSysError("此功能僅限求職者帳號使用。");
       return;
     }
 
@@ -373,6 +447,8 @@ export default function App() {
           sidebarOpen={sidebarOpen}
           currentTab={currentTab}
           currentUser={currentUser}
+          userRole={userRole}
+          userProfile={userProfile}
           handleTabClick={handleTabClick}
           handleLogout={handleLogout}
         />
@@ -406,7 +482,9 @@ export default function App() {
               <AuthView
                 setSysError={setSysError}
                 setSysMsg={setSysMsg}
-                onLoginSuccess={() => setCurrentTab("dashboard")}
+                onLoginSuccess={() => {
+                  setCurrentTab("dashboard");
+                }}
               />
             )}
 
@@ -434,6 +512,22 @@ export default function App() {
             )}
 
             {currentTab === "settings" && <SettingsView currentUser={currentUser} />}
+
+            {currentTab === "compare" && (
+              <ResumeCompareView resumeRecords={resumeRecords} />
+            )}
+
+            {currentTab === "employerDashboard" && (
+              <EmployerDashboardView userProfile={userProfile} />
+            )}
+
+            {currentTab === "employerScreening" && (
+              <EmployerScreeningView setSysError={setSysError} />
+            )}
+
+            {currentTab === "candidateList" && (
+              <CandidateListView setSysError={setSysError} />
+            )}
           </main>
         </div>
 
@@ -488,6 +582,8 @@ function Sidebar({
   sidebarOpen,
   currentTab,
   currentUser,
+  userRole,
+  userProfile,
   handleTabClick,
   handleLogout,
 }) {
@@ -550,19 +646,57 @@ function Sidebar({
           onClick={() => handleTabClick("campus")}
         />
 
-        <SideLabel text="會員專屬" />
-        <NavItem
-          icon={<LayoutDashboard />}
-          label="個人總覽"
-          isActive={currentTab === "dashboard"}
-          onClick={() => handleTabClick("dashboard")}
-        />
-        <NavItem
-          icon={<Upload />}
-          label="履歷上傳分析"
-          isActive={currentTab === "upload"}
-          onClick={() => handleTabClick("upload")}
-        />
+        {userRole === "employer" ? (
+          <>
+            <SideLabel text="企業端功能" />
+
+            <NavItem
+              icon={<LayoutDashboard />}
+              label="企業端總覽"
+              isActive={currentTab === "employerDashboard"}
+              onClick={() => handleTabClick("employerDashboard")}
+            />
+
+            <NavItem
+              icon={<Target />}
+              label="人才自動篩選"
+              isActive={currentTab === "employerScreening"}
+              onClick={() => handleTabClick("employerScreening")}
+            />
+
+            <NavItem
+              icon={<FileText />}
+              label="候選人履歷資料"
+              isActive={currentTab === "candidateList"}
+              onClick={() => handleTabClick("candidateList")}
+            />
+          </>
+        ) : (
+          <>
+            <SideLabel text="會員專屬" />
+
+            <NavItem
+              icon={<LayoutDashboard />}
+              label="個人總覽"
+              isActive={currentTab === "dashboard"}
+              onClick={() => handleTabClick("dashboard")}
+            />
+
+            <NavItem
+              icon={<Upload />}
+              label="履歷上傳分析"
+              isActive={currentTab === "upload"}
+              onClick={() => handleTabClick("upload")}
+            />
+
+            <NavItem
+              icon={<BarChart2 />}
+              label="履歷版本比較"
+              isActive={currentTab === "compare"}
+              onClick={() => handleTabClick("compare")}
+            />
+          </>
+        )}
       </nav>
 
       <div style={{ padding: "20px", borderTop: `1px solid ${COLORS.secondary}` }}>
@@ -2131,6 +2265,118 @@ function SettingsView({ currentUser }) {
               本系統使用帳號登入機制管理會員資料，履歷分析結果會儲存在系統中。
             </p>
           </div>
+        </div>
+      </PageBody>
+    </>
+  );
+}
+
+function EmployerDashboardView({ userProfile }) {
+  return (
+    <>
+      <HeroSection
+        title="企業端總覽"
+        description={`歡迎使用企業端功能，${userProfile?.companyName || "企業帳號"} 可以在這裡查看人才篩選與候選人履歷資料。`}
+        statItems={[
+          { icon: <Briefcase size={18} />, value: "企業端", label: "帳號角色" },
+          { icon: <Target size={18} />, value: "自動篩選", label: "人才媒合" },
+          { icon: <FileText size={18} />, value: "履歷資料", label: "候選人紀錄" },
+          { icon: <BarChart2 size={18} />, value: "排序", label: "符合度評估" },
+        ]}
+      />
+
+      <PageBody>
+        <div style={STYLES.card}>
+          <h3 style={STYLES.title}>
+            <Briefcase size={20} /> 企業端功能說明
+          </h3>
+          <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
+            企業端可以輸入職缺條件，系統會根據求職者的履歷分析紀錄，自動計算候選人符合度並排序。
+          </p>
+        </div>
+      </PageBody>
+    </>
+  );
+}
+
+function EmployerScreeningView() {
+  return (
+    <>
+      <HeroSection
+        title="人才自動篩選"
+        description="輸入職缺需求後，系統會依據履歷分析紀錄，協助企業端排序適合候選人。"
+        statItems={[
+          { icon: <Target size={18} />, value: "技能比對", label: "篩選依據" },
+          { icon: <BarChart2 size={18} />, value: "符合度", label: "自動排序" },
+          { icon: <User size={18} />, value: "候選人", label: "履歷紀錄" },
+          { icon: <CheckCircle size={18} />, value: "初篩", label: "降低人工成本" },
+        ]}
+      />
+
+      <PageBody>
+        <div style={STYLES.card}>
+          <h3 style={STYLES.title}>
+            <Target size={20} /> 自動篩選功能
+          </h3>
+          <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
+            這裡下一步會加入職缺條件輸入、需求技能比對、候選人符合度排序與推薦理由。
+          </p>
+        </div>
+      </PageBody>
+    </>
+  );
+}
+
+function CandidateListView() {
+  return (
+    <>
+      <HeroSection
+        title="候選人履歷資料"
+        description="企業端可查看系統中的候選人履歷分析紀錄，作為初步篩選參考。"
+        statItems={[
+          { icon: <FileText size={18} />, value: "履歷紀錄", label: "候選資料" },
+          { icon: <Sparkles size={18} />, value: "分析結果", label: "能力摘要" },
+          { icon: <Target size={18} />, value: "技能缺口", label: "補強資訊" },
+          { icon: <Briefcase size={18} />, value: "推薦職缺", label: "媒合參考" },
+        ]}
+      />
+
+      <PageBody>
+        <div style={STYLES.card}>
+          <h3 style={STYLES.title}>
+            <FileText size={20} /> 候選人資料列表
+          </h3>
+          <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
+            這裡下一步會讀取 Firestore resumes 集合，顯示所有候選人的履歷分析紀錄。
+          </p>
+        </div>
+      </PageBody>
+    </>
+  );
+}
+
+function ResumeCompareView({ resumeRecords }) {
+  return (
+    <>
+      <HeroSection
+        title="履歷版本比較"
+        description="比較不同履歷版本的完整度、技能數量、推薦職缺與補強能力變化。"
+        statItems={[
+          { icon: <FileText size={18} />, value: resumeRecords.length, label: "可比較紀錄" },
+          { icon: <BarChart2 size={18} />, value: "分數變化", label: "完整度比較" },
+          { icon: <Sparkles size={18} />, value: "技能差異", label: "能力變化" },
+          { icon: <Briefcase size={18} />, value: "職缺變化", label: "推薦比較" },
+        ]}
+      />
+
+      <PageBody>
+        <div style={STYLES.card}>
+          <h3 style={STYLES.title}>
+            <BarChart2 size={20} /> 版本比較功能
+          </h3>
+          <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
+            這裡下一步會加入兩份履歷紀錄選擇器，並比較履歷完整度、技能變化與推薦職缺變化。
+          </p>
         </div>
       </PageBody>
     </>
