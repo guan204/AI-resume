@@ -1,3 +1,5 @@
+import * as pdfjsLib from "pdfjs-dist";
+import { createWorker } from "tesseract.js";
 import React, { useEffect, useMemo, useState } from "react";
 import { initializeApp, getApps } from "firebase/app";
 import {
@@ -39,6 +41,11 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.mjs",
+  import.meta.url
+).toString();
 
 const firebaseConfig = {
   apiKey: "AIzaSyA9qmQY2S803Nxog-SRoo39U_s8hV93Sr8",
@@ -1188,6 +1195,26 @@ function DashboardView({ currentUser, resumeRecords, recordsLoading, setCurrentT
                   {makeUserFriendlySummary(latestRecord.userSummary || latestRecord.nlpSummary)}
                 </p>
 
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                  {latestRecord.careerDirection && (
+                    <span style={tagStyle(COLORS.accent)}>
+                      {latestRecord.careerDirection}
+                    </span>
+                  )}
+
+                  {latestRecord.experienceLevel && (
+                    <span style={tagStyle(COLORS.textMuted)}>
+                      {latestRecord.experienceLevel}
+                    </span>
+                  )}
+
+                  {latestRecord.resumeScore ? (
+                    <span style={tagStyle(COLORS.success)}>
+                      履歷完整度 {latestRecord.resumeScore}/100
+                    </span>
+                  ) : null}
+                </div>
+
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {(latestRecord.skills || []).slice(0, 8).map((skill) => (
                     <span key={skill} style={tagStyle(COLORS.success)}>
@@ -1286,6 +1313,46 @@ function DashboardView({ currentUser, resumeRecords, recordsLoading, setCurrentT
   );
 }
 
+async function extractTextFromPdf(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  const pages = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+
+    const text = content.items
+      .map((item) => ("str" in item ? item.str : ""))
+      .join(" ");
+
+    pages.push(text);
+  }
+
+  return pages.join("\n").trim();
+}
+
+async function extractTextFromImage(file) {
+  let worker;
+
+  try {
+    worker = await createWorker("eng+chi_tra");
+  } catch {
+    worker = await createWorker("eng");
+  }
+
+  try {
+    const {
+      data: { text },
+    } = await worker.recognize(file);
+
+    return text.trim();
+  } finally {
+    await worker.terminate();
+  }
+}
+
 function QuickActionCard({ title, text, onClick }) {
   return (
     <button
@@ -1323,8 +1390,10 @@ function UploadView({
   const [file, setFile] = useState(null);
   const [resumeText, setResumeText] = useState("");
   const [result, setResult] = useState(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractingMsg, setExtractingMsg] = useState("");
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
@@ -1332,6 +1401,51 @@ function UploadView({
     setResult(null);
     setSysError("");
     setSysMsg("");
+
+    const fileName = selectedFile.name.toLowerCase();
+    const isPdf =
+      selectedFile.type === "application/pdf" || fileName.endsWith(".pdf");
+    const isImage =
+      selectedFile.type.startsWith("image/") ||
+      fileName.endsWith(".png") ||
+      fileName.endsWith(".jpg") ||
+      fileName.endsWith(".jpeg");
+
+    if (!isPdf && !isImage) {
+      setSysMsg("已選擇履歷檔案。若系統無法讀取內容，請手動貼上履歷文字。");
+      return;
+    }
+
+    setIsExtracting(true);
+    setExtractingMsg(isPdf ? "正在讀取 PDF 履歷內容..." : "正在辨識圖片履歷文字...");
+
+    try {
+      const extractedText = isPdf
+        ? await extractTextFromPdf(selectedFile)
+        : await extractTextFromImage(selectedFile);
+
+      if (!extractedText || extractedText.length < 10) {
+        setSysError("系統沒有讀到足夠的履歷文字，請手動貼上履歷內容。");
+        return;
+      }
+
+      setResumeText((prev) => {
+        const nextText = extractedText.trim();
+        return prev.trim() ? `${prev.trim()}\n\n${nextText}` : nextText;
+      });
+
+      setSysMsg(
+        isPdf
+          ? "PDF 履歷內容讀取完成，已自動填入履歷文字框。"
+          : "圖片文字辨識完成，已自動填入履歷文字框。"
+      );
+    } catch (error) {
+      console.error(error);
+      setSysError("自動讀取履歷內容失敗，請改用手動貼上履歷文字。");
+    } finally {
+      setIsExtracting(false);
+      setExtractingMsg("");
+    }
   };
 
   const startAnalysis = async () => {
@@ -1370,6 +1484,7 @@ function UploadView({
         fileType: file.type,
         storageMode: "no-storage-demo",
         resumeTextPreview: resumeText.slice(0, 500),
+
         skills: aiResult.skills || [],
         resumeHighlights: aiResult.resumeHighlights || [],
         resumeProblems: aiResult.resumeProblems || [],
@@ -1379,6 +1494,15 @@ function UploadView({
         recommendedJobs: aiResult.recommendedJobs || [],
         userSummary: makeUserFriendlySummary(aiResult.userSummary || aiResult.nlpSummary),
         nlpSummary: aiResult.nlpSummary || "",
+
+        careerDirection: aiResult.careerDirection || "尚未判斷",
+        experienceLevel: aiResult.experienceLevel || "新鮮人 / 初階",
+        resumeScore: Number(aiResult.resumeScore || 0),
+        workStyle: aiResult.workStyle || [],
+        personalityTraits: aiResult.personalityTraits || [],
+        jobFitReasoning: aiResult.jobFitReasoning || [],
+        learningResources: aiResult.learningResources || [],
+
         createdAt: new Date().toISOString(),
       };
 
@@ -1400,21 +1524,23 @@ function UploadView({
     }
   };
 
+  const disabled = isAnalyzing || isExtracting;
+
   return (
     <>
       <HeroSection
         title="上傳履歷並整理你的求職優勢"
-        description="貼上履歷內容後，系統會協助整理已具備能力、履歷亮點、建議補強項目，以及較適合的職缺方向。"
+        description="選擇 PDF 或圖片履歷後，系統會嘗試自動讀取內容；你也可以手動貼上履歷文字，再進行分析。"
         statItems={[
-          { icon: <Upload size={18} />, value: "履歷上傳", label: "快速開始" },
-          { icon: <BarChart2 size={18} />, value: "重點整理", label: "能力摘要" },
-          { icon: <Target size={18} />, value: "補強方向", label: "履歷優化" },
+          { icon: <Upload size={18} />, value: "自動讀取", label: "PDF / 圖片" },
+          { icon: <BarChart2 size={18} />, value: "履歷分數", label: "完整度評估" },
+          { icon: <Target size={18} />, value: "補強方向", label: "學習建議" },
           { icon: <Briefcase size={18} />, value: "職缺建議", label: "推薦結果" },
         ]}
       />
 
       <PageBody>
-        {isAnalyzing && (
+        {(isAnalyzing || isExtracting) && (
           <div
             style={{
               padding: "16px",
@@ -1432,7 +1558,7 @@ function UploadView({
             }}
           >
             <Cloud className="spin-animation" size={20} style={{ flexShrink: 0, marginTop: 2 }} />
-            系統正在分析履歷，請稍候。
+            {isExtracting ? extractingMsg : "系統正在分析履歷，請稍候。"}
           </div>
         )}
 
@@ -1456,7 +1582,7 @@ function UploadView({
               accept=".pdf,.png,.jpg,.jpeg"
               onChange={handleFileChange}
               style={{ display: "none" }}
-              disabled={isAnalyzing}
+              disabled={disabled}
             />
 
             <label
@@ -1469,10 +1595,10 @@ function UploadView({
                 padding: "28px",
                 border: `2px dashed ${COLORS.accent}`,
                 borderRadius: "14px",
-                cursor: isAnalyzing ? "not-allowed" : "pointer",
+                cursor: disabled ? "not-allowed" : "pointer",
                 backgroundColor: "#F8FBFF",
                 color: COLORS.accent,
-                opacity: isAnalyzing ? 0.5 : 1,
+                opacity: disabled ? 0.5 : 1,
                 textAlign: "left",
               }}
             >
@@ -1481,22 +1607,25 @@ function UploadView({
               <span style={{ fontSize: "0.9rem", color: COLORS.textMuted }}>
                 {file ? `已選擇：${file.name}` : "支援 PDF、PNG、JPG、JPEG"}
               </span>
+              <span style={{ fontSize: "0.85rem", color: COLORS.textMuted, lineHeight: 1.6 }}>
+                PDF 會自動解析文字；圖片會嘗試辨識文字。若結果不完整，可手動修改右側文字框。
+              </span>
             </label>
           </div>
 
           <div style={STYLES.card}>
             <h3 style={STYLES.title}>
-              <FileText size={20} /> 貼上履歷文字
+              <FileText size={20} /> 履歷文字內容
             </h3>
 
             <textarea
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
-              disabled={isAnalyzing}
-              placeholder="請貼上履歷文字內容，例如：學歷、技能、專案經驗、工作經驗、證照、作品集等。"
+              disabled={disabled}
+              placeholder="請貼上履歷文字內容，或上傳 PDF / 圖片後由系統自動讀取。"
               style={{
                 width: "100%",
-                minHeight: "230px",
+                minHeight: "260px",
                 padding: "14px",
                 borderRadius: "12px",
                 border: `1px solid ${COLORS.border}`,
@@ -1514,12 +1643,12 @@ function UploadView({
                 ...STYLES.button,
                 marginTop: 16,
                 width: "100%",
-                opacity: isAnalyzing ? 0.7 : 1,
-                cursor: isAnalyzing ? "not-allowed" : "pointer",
+                opacity: disabled ? 0.7 : 1,
+                cursor: disabled ? "not-allowed" : "pointer",
                 borderRadius: "12px",
               }}
               onClick={startAnalysis}
-              disabled={isAnalyzing}
+              disabled={disabled}
             >
               {isAnalyzing ? (
                 <>
@@ -1564,9 +1693,23 @@ function AnalysisResult({ result }) {
         </p>
       </div>
 
+      <SemanticProfileCard result={result} />
+
       <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-        <InfoListCard icon={<BarChart2 size={20} />} title="已具備能力" items={result.skills} color={COLORS.success} emptyText="尚未整理到明確能力。" />
-        <InfoListCard icon={<Target size={20} />} title="建議補強能力" items={result.missingSkills} color={COLORS.warning} emptyText="目前沒有明顯需要補強的能力。" />
+        <InfoListCard
+          icon={<BarChart2 size={20} />}
+          title="已具備能力"
+          items={result.skills}
+          color={COLORS.success}
+          emptyText="尚未整理到明確能力。"
+        />
+        <InfoListCard
+          icon={<Target size={20} />}
+          title="建議補強能力"
+          items={result.missingSkills}
+          color={COLORS.warning}
+          emptyText="目前沒有明顯需要補強的能力。"
+        />
       </div>
 
       <div className="responsive-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
@@ -1575,6 +1718,8 @@ function AnalysisResult({ result }) {
       </div>
 
       <BulletCard icon={<CheckCircle size={20} />} title="履歷優化建議" items={result.resumeSuggestions} />
+
+      <LearningResourcesCard resources={result.learningResources || []} />
 
       <div style={STYLES.card}>
         <h3 style={STYLES.title}>
@@ -1660,6 +1805,202 @@ function AnalysisResult({ result }) {
             ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function SemanticProfileCard({ result }) {
+  const score = Number(result.resumeScore || 0);
+
+  return (
+    <div style={STYLES.card}>
+      <h3 style={STYLES.title}>
+        <Sparkles size={20} /> 履歷整體評估
+      </h3>
+
+      <div
+        className="responsive-grid-3"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "0.8fr 1fr 1fr",
+          gap: 16,
+          alignItems: "stretch",
+        }}
+      >
+        <div
+          style={{
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 14,
+            padding: 18,
+            backgroundColor: "#F8FAFC",
+          }}
+        >
+          <div style={{ color: COLORS.textMuted, fontSize: "0.9rem", marginBottom: 8 }}>
+            履歷完整度
+          </div>
+          <div style={{ color: COLORS.primary, fontWeight: 900, fontSize: "2rem" }}>
+            {score || "尚無"}
+            {score ? <span style={{ fontSize: "1rem" }}> / 100</span> : null}
+          </div>
+        </div>
+
+        <div
+          style={{
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 14,
+            padding: 18,
+            backgroundColor: "#FFFFFF",
+          }}
+        >
+          <div style={{ color: COLORS.textMuted, fontSize: "0.9rem", marginBottom: 8 }}>
+            適合職涯方向
+          </div>
+          <div style={{ color: COLORS.primary, fontWeight: 800, lineHeight: 1.6 }}>
+            {result.careerDirection || "尚未判斷"}
+          </div>
+        </div>
+
+        <div
+          style={{
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 14,
+            padding: 18,
+            backgroundColor: "#FFFFFF",
+          }}
+        >
+          <div style={{ color: COLORS.textMuted, fontSize: "0.9rem", marginBottom: 8 }}>
+            經驗程度
+          </div>
+          <div style={{ color: COLORS.primary, fontWeight: 800, lineHeight: 1.6 }}>
+            {result.experienceLevel || "新鮮人 / 初階"}
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="responsive-grid-2"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 16,
+          marginTop: 16,
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 800, color: COLORS.primary, marginBottom: 10 }}>
+            工作風格
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {(result.workStyle || []).length > 0 ? (
+              result.workStyle.map((item) => (
+                <span key={item} style={tagStyle(COLORS.accent)}>
+                  {item}
+                </span>
+              ))
+            ) : (
+              <span style={{ color: COLORS.textMuted }}>尚無資料</span>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontWeight: 800, color: COLORS.primary, marginBottom: 10 }}>
+            個人特質
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {(result.personalityTraits || []).length > 0 ? (
+              result.personalityTraits.map((item) => (
+                <span key={item} style={tagStyle(COLORS.success)}>
+                  {item}
+                </span>
+              ))
+            ) : (
+              <span style={{ color: COLORS.textMuted }}>尚無資料</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {(result.jobFitReasoning || []).length > 0 && (
+        <div style={{ marginTop: 18 }}>
+          <div style={{ fontWeight: 800, color: COLORS.primary, marginBottom: 10 }}>
+            職缺媒合理由
+          </div>
+          <ul style={listStyle}>
+            {result.jobFitReasoning.map((item, index) => (
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LearningResourcesCard({ resources = [] }) {
+  return (
+    <div style={STYLES.card}>
+      <h3 style={STYLES.title}>
+        <Target size={20} /> 學習資源與補強路線
+      </h3>
+
+      {resources.length === 0 ? (
+        <p style={{ margin: 0, color: COLORS.textMuted }}>
+          目前沒有學習資源建議。
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {resources.map((resource, index) => (
+            <div
+              key={`${resource.skill}-${index}`}
+              style={{
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 14,
+                padding: 18,
+                backgroundColor: "#FBFDFF",
+              }}
+            >
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                <span style={tagStyle(COLORS.warning)}>
+                  {resource.skill || "建議補強能力"}
+                </span>
+              </div>
+
+              <p style={{ margin: "0 0 12px", color: COLORS.textMuted, lineHeight: 1.7 }}>
+                {resource.reason || "建議補強這項能力以提升職缺適合度。"}
+              </p>
+
+              {resource.learningPath && resource.learningPath.length > 0 && (
+                <>
+                  <div style={{ fontWeight: 800, color: COLORS.primary, marginBottom: 8 }}>
+                    建議學習順序
+                  </div>
+                  <ol style={{ ...listStyle, marginBottom: 12 }}>
+                    {resource.learningPath.map((step, stepIndex) => (
+                      <li key={stepIndex}>{step}</li>
+                    ))}
+                  </ol>
+                </>
+              )}
+
+              {resource.practiceTask && (
+                <div
+                  style={{
+                    backgroundColor: "#F8FAFC",
+                    borderRadius: 10,
+                    padding: 12,
+                    color: COLORS.textMain,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  <strong style={{ color: COLORS.primary }}>練習任務：</strong>
+                  <span> {resource.practiceTask}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
