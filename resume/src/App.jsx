@@ -482,8 +482,8 @@ export default function App() {
               <AuthView
                 setSysError={setSysError}
                 setSysMsg={setSysMsg}
-                onLoginSuccess={() => {
-                  setCurrentTab("dashboard");
+                onLoginSuccess={(role) => {
+                  setCurrentTab(role === "employer" ? "employerDashboard" : "dashboard");
                 }}
               />
             )}
@@ -850,7 +850,17 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
+  const [accountRole, setAccountRole] = useState("jobseeker");
+  const [companyName, setCompanyName] = useState("");
+  const [employerCode, setEmployerCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const EMPLOYER_VERIFY_CODE = "HR2026";
+
+  const resetRoleFields = () => {
+    setCompanyName("");
+    setEmployerCode("");
+  };
 
   const handleSubmit = async () => {
     if (!account || !password) {
@@ -863,6 +873,22 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
       return;
     }
 
+    if (accountRole === "employer") {
+      if (!isLoginMode && !companyName.trim()) {
+        setSysError("註冊企業端帳號時，請填寫公司名稱。");
+        return;
+      }
+
+      if (employerCode.trim() !== EMPLOYER_VERIFY_CODE) {
+        setSysError(
+          isLoginMode
+            ? "企業驗證碼錯誤，請確認後再登入。"
+            : "企業驗證碼錯誤，請確認後再註冊，或改用求職者帳號。"
+        );
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setSysError("");
     setSysMsg("");
@@ -871,14 +897,79 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
       if (!auth) throw new Error("登入服務尚未正確啟用。");
 
       if (isLoginMode) {
-        await signInWithEmailAndPassword(auth, account, password);
-        setSysMsg("登入成功！");
-      } else {
-        await createUserWithEmailAndPassword(auth, account, password);
-        setSysMsg("註冊成功，系統已自動登入。");
-      }
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          account,
+          password
+        );
 
-      onLoginSuccess();
+        let profileRole = "jobseeker";
+
+        if (db) {
+          const userRef = doc(db, "users", userCredential.user.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            const profile = userSnap.data();
+            profileRole = profile.role || "jobseeker";
+          } else {
+            const defaultProfile = {
+              email: account,
+              role: "jobseeker",
+              companyName: "",
+              createdAt: new Date().toISOString(),
+            };
+
+            await setDoc(userRef, defaultProfile);
+            profileRole = "jobseeker";
+          }
+        }
+
+        if (profileRole !== accountRole) {
+          await signOut(auth);
+
+          setSysError(
+            accountRole === "employer"
+              ? "此帳號不是企業端帳號，請切換為求職者登入。"
+              : "此帳號不是求職者帳號，請切換為企業端登入。"
+          );
+
+          return;
+        }
+
+        setSysMsg(
+          accountRole === "employer"
+            ? "企業端登入成功！"
+            : "求職者登入成功！"
+        );
+
+        onLoginSuccess(profileRole);
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          account,
+          password
+        );
+
+        if (db) {
+          const userRef = doc(db, "users", userCredential.user.uid);
+
+          await setDoc(userRef, {
+            email: account,
+            role: accountRole,
+            companyName: accountRole === "employer" ? companyName.trim() : "",
+            createdAt: new Date().toISOString(),
+          });
+        }
+
+        setSysMsg(
+          accountRole === "employer"
+            ? "企業端帳號註冊成功，系統已自動登入。"
+            : "求職者帳號註冊成功，系統已自動登入。"
+        );
+
+        onLoginSuccess(accountRole);
+      }
     } catch (err) {
       console.error(err);
 
@@ -904,7 +995,7 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
 
   return (
     <div style={{ padding: "48px 24px" }}>
-      <div style={{ maxWidth: "430px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "460px", margin: "0 auto" }}>
         <div style={{ ...STYLES.card, padding: "38px" }}>
           <div style={{ textAlign: "center", marginBottom: "24px" }}>
             <Cloud size={48} color={COLORS.primary} />
@@ -912,11 +1003,95 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
               {isLoginMode ? "登入會員" : "註冊新帳號"}
             </h2>
             <p style={{ color: COLORS.textMuted, margin: 0, lineHeight: 1.6 }}>
-              登入後可使用履歷分析與個人化職缺推薦。
+              {isLoginMode
+                ? "請先選擇登入身分，再輸入帳號密碼。"
+                : "註冊後會依照帳號身分，顯示求職者端或企業端功能。"}
             </p>
           </div>
 
-          <label style={{ fontWeight: 700, color: COLORS.primary }}>電子信箱</label>
+          <div
+            style={{
+              backgroundColor: "#F8FAFC",
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: "12px",
+              padding: "14px 16px",
+              marginBottom: "20px",
+              lineHeight: 1.7,
+              color: COLORS.textMuted,
+              fontSize: "0.92rem",
+              textAlign: "left",
+            }}
+          >
+            <strong style={{ color: COLORS.primary }}>帳號功能提醒</strong>
+            <br />
+            求職者帳號：可使用履歷分析、職缺推薦、履歷版本比較。
+            <br />
+            企業端帳號：需輸入企業驗證碼，可使用人才自動篩選與候選人履歷資料。
+          </div>
+
+          <div style={{ marginBottom: "18px" }}>
+            <label style={{ fontWeight: 700, color: COLORS.primary }}>
+              {isLoginMode ? "登入身分" : "帳號類型"}
+            </label>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+                marginTop: "10px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountRole("jobseeker");
+                  resetRoleFields();
+                }}
+                style={{
+                  padding: "12px",
+                  borderRadius: "12px",
+                  border:
+                    accountRole === "jobseeker"
+                      ? `2px solid ${COLORS.accent}`
+                      : `1px solid ${COLORS.border}`,
+                  backgroundColor:
+                    accountRole === "jobseeker" ? "#EFF6FF" : "#FFFFFF",
+                  color: COLORS.primary,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  textAlign: "center",
+                }}
+              >
+                求職者
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAccountRole("employer")}
+                style={{
+                  padding: "12px",
+                  borderRadius: "12px",
+                  border:
+                    accountRole === "employer"
+                      ? `2px solid ${COLORS.accent}`
+                      : `1px solid ${COLORS.border}`,
+                  backgroundColor:
+                    accountRole === "employer" ? "#EFF6FF" : "#FFFFFF",
+                  color: COLORS.primary,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  textAlign: "center",
+                }}
+              >
+                企業端 / HR
+              </button>
+            </div>
+          </div>
+
+          <label style={{ fontWeight: 700, color: COLORS.primary }}>
+            電子信箱
+          </label>
           <input
             type="email"
             placeholder="example@email.com"
@@ -935,12 +1110,70 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
             style={{ ...STYLES.input, marginTop: 8, marginBottom: 18 }}
           />
 
+          {accountRole === "employer" && (
+            <div
+              style={{
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: "12px",
+                padding: "16px",
+                marginBottom: "18px",
+                backgroundColor: "#FBFDFF",
+              }}
+            >
+              {!isLoginMode && (
+                <>
+                  <label style={{ fontWeight: 700, color: COLORS.primary }}>
+                    公司名稱
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="例如：AI Resume 測試企業"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    style={{ ...STYLES.input, marginTop: 8, marginBottom: 16 }}
+                  />
+                </>
+              )}
+
+              <label style={{ fontWeight: 700, color: COLORS.primary }}>
+                企業驗證碼
+              </label>
+              <input
+                type="password"
+                placeholder="請輸入企業驗證碼"
+                value={employerCode}
+                onChange={(e) => setEmployerCode(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                style={{ ...STYLES.input, marginTop: 8, marginBottom: 8 }}
+              />
+
+              <p
+                style={{
+                  margin: 0,
+                  color: COLORS.textMuted,
+                  fontSize: "0.85rem",
+                  lineHeight: 1.6,
+                }}
+              >
+                Demo 版企業端登入與註冊皆需驗證碼，避免一般使用者任意使用企業功能。
+              </p>
+            </div>
+          )}
+
           <button
             style={{ ...STYLES.button, width: "100%" }}
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "處理中..." : isLoginMode ? "登入系統" : "註冊帳號"}
+            {isSubmitting
+              ? "處理中..."
+              : isLoginMode
+              ? accountRole === "employer"
+                ? "登入企業端"
+                : "登入求職者帳號"
+              : accountRole === "employer"
+              ? "註冊企業端帳號"
+              : "註冊求職者帳號"}
           </button>
 
           <div
@@ -957,6 +1190,8 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
                 setIsLoginMode(!isLoginMode);
                 setSysError("");
                 setSysMsg("");
+                setAccountRole("jobseeker");
+                resetRoleFields();
               }}
               style={{
                 background: "none",
@@ -2272,83 +2507,705 @@ function SettingsView({ currentUser }) {
 }
 
 function EmployerDashboardView({ userProfile }) {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadRecords = async () => {
+      if (!db) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const snapshot = await getDocs(collection(db, "resumes"));
+        const data = snapshot.docs
+          .map((docItem) => ({ id: docItem.id, ...docItem.data() }))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        setRecords(data);
+      } catch (error) {
+        console.warn("企業端總覽讀取候選人失敗：", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecords();
+  }, []);
+
+  const uniqueCandidateCount = new Set(
+    records.map((record) => record.uid || record.userEmail || record.id)
+  ).size;
+
+  const avgResumeScore =
+    records.length > 0
+      ? Math.round(
+          records.reduce((sum, record) => sum + Number(record.resumeScore || 0), 0) /
+            records.length
+        )
+      : 0;
+
+  const allSkills = records.flatMap((record) => record.skills || []);
+  const skillStats = allSkills.reduce((acc, skill) => {
+    const key = String(skill || "").trim();
+    if (!key) return acc;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  const topSkills = Object.entries(skillStats)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+
+  const latestRecords = records.slice(0, 5);
+
   return (
     <>
       <HeroSection
         title="企業端總覽"
-        description={`歡迎使用企業端功能，${userProfile?.companyName || "企業帳號"} 可以在這裡查看人才篩選與候選人履歷資料。`}
+        description={`歡迎使用企業端功能，${userProfile?.companyName || "企業帳號"} 可以在這裡查看候選人資料概況，並進行人才自動篩選。`}
         statItems={[
-          { icon: <Briefcase size={18} />, value: "企業端", label: "帳號角色" },
-          { icon: <Target size={18} />, value: "自動篩選", label: "人才媒合" },
-          { icon: <FileText size={18} />, value: "履歷資料", label: "候選人紀錄" },
-          { icon: <BarChart2 size={18} />, value: "排序", label: "符合度評估" },
+          { icon: <User size={18} />, value: loading ? "讀取中" : uniqueCandidateCount, label: "候選人數" },
+          { icon: <FileText size={18} />, value: loading ? "讀取中" : records.length, label: "履歷紀錄" },
+          { icon: <BarChart2 size={18} />, value: avgResumeScore ? `${avgResumeScore}/100` : "尚無", label: "平均完整度" },
+          { icon: <Target size={18} />, value: topSkills.length, label: "常見技能" },
         ]}
       />
 
       <PageBody>
-        <div style={STYLES.card}>
+        <div
+          className="responsive-grid-2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 20,
+            alignItems: "start",
+          }}
+        >
+          <div style={STYLES.card}>
+            <h3 style={STYLES.title}>
+              <Target size={20} /> 常見候選人技能
+            </h3>
+
+            {loading ? (
+              <p style={{ color: COLORS.textMuted, margin: 0 }}>正在讀取資料...</p>
+            ) : topSkills.length === 0 ? (
+              <p style={{ color: COLORS.textMuted, margin: 0 }}>
+                目前尚無候選人技能資料。
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {topSkills.map(([skill, count]) => (
+                  <span key={skill} style={tagStyle(COLORS.accent)}>
+                    {skill} × {count}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={STYLES.card}>
+            <h3 style={STYLES.title}>
+              <Briefcase size={20} /> 企業端功能
+            </h3>
+
+            <ul style={listStyle}>
+              <li>可依職缺需求輸入技能條件，自動排序候選人。</li>
+              <li>可查看候選人履歷摘要、完整度、能力與技能缺口。</li>
+              <li>可作為 HR 初步篩選人才的輔助工具。</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style={{ ...STYLES.card, marginTop: 22 }}>
           <h3 style={STYLES.title}>
-            <Briefcase size={20} /> 企業端功能說明
+            <FileText size={20} /> 最近新增候選人
           </h3>
-          <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
-            企業端可以輸入職缺條件，系統會根據求職者的履歷分析紀錄，自動計算候選人符合度並排序。
-          </p>
+
+          {loading ? (
+            <p style={{ color: COLORS.textMuted, margin: 0 }}>正在讀取候選人紀錄...</p>
+          ) : latestRecords.length === 0 ? (
+            <p style={{ color: COLORS.textMuted, margin: 0 }}>
+              目前尚無履歷分析紀錄。當求職者完成履歷分析後，候選人資料會顯示在這裡。
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {latestRecords.map((record) => (
+                <div
+                  key={record.id}
+                  style={{
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 14,
+                    padding: 16,
+                    backgroundColor: "#FBFDFF",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <strong style={{ color: COLORS.primary }}>
+                        {record.userEmail || "未提供信箱"}
+                      </strong>
+                      <p style={{ margin: "6px 0 0", color: COLORS.textMuted, lineHeight: 1.6 }}>
+                        {record.fileName || "未命名履歷"}・
+                        {record.createdAt ? new Date(record.createdAt).toLocaleString() : "無時間紀錄"}
+                      </p>
+                    </div>
+
+                    <span style={tagStyle(COLORS.success)}>
+                      完整度 {record.resumeScore || 0}/100
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {(record.skills || []).slice(0, 6).map((skill) => (
+                      <span key={skill} style={tagStyle(COLORS.accent)}>
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </PageBody>
     </>
   );
 }
 
-function EmployerScreeningView() {
+function EmployerScreeningView({ setSysError }) {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [jobTitle, setJobTitle] = useState("前端工程師");
+  const [location, setLocation] = useState("");
+  const [jobType, setJobType] = useState("全職");
+  const [requiredSkillsText, setRequiredSkillsText] = useState("React, JavaScript, Firebase");
+  const [minScore, setMinScore] = useState(60);
+  const [results, setResults] = useState([]);
+
+  const parseRequiredSkills = (text) =>
+    text
+      .split(/[,，、\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const getLatestRecordsByCandidate = (items) => {
+    const sorted = [...items].sort(
+      (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+    );
+
+    const map = new Map();
+
+    sorted.forEach((record) => {
+      const key = record.uid || record.userEmail || record.id;
+      if (!map.has(key)) map.set(key, record);
+    });
+
+    return Array.from(map.values());
+  };
+
+  const calculateFit = (record, requiredSkills) => {
+    const candidateSkills = (record.skills || []).map((skill) => String(skill).trim());
+    const candidateSkillsLower = candidateSkills.map((skill) => skill.toLowerCase());
+    const requiredLower = requiredSkills.map((skill) => skill.toLowerCase());
+
+    const matchedSkills = requiredSkills.filter((skill, index) => {
+      const target = requiredLower[index];
+      return candidateSkillsLower.some(
+        (candidateSkill) =>
+          candidateSkill.includes(target) || target.includes(candidateSkill)
+      );
+    });
+
+    const missingSkills = requiredSkills.filter((skill) => !matchedSkills.includes(skill));
+
+    const skillScore =
+      requiredSkills.length > 0
+        ? Math.round((matchedSkills.length / requiredSkills.length) * 65)
+        : 35;
+
+    const resumeScore = Math.min(Number(record.resumeScore || 0), 100);
+    const resumeScorePart = Math.round(resumeScore * 0.2);
+
+    const careerText = `${record.careerDirection || ""} ${(record.recommendedJobs || [])
+      .map((job) => job.title || "")
+      .join(" ")}`.toLowerCase();
+
+    const titleKeywords = jobTitle
+      .split(/[\s,，、/]+/)
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean);
+
+    const careerPart =
+      titleKeywords.length > 0 && titleKeywords.some((word) => careerText.includes(word))
+        ? 10
+        : 0;
+
+    const locationText = `${record.location || ""} ${(record.recommendedJobs || [])
+      .map((job) => job.location || "")
+      .join(" ")}`.toLowerCase();
+
+    const locationPart =
+      location && locationText.includes(location.trim().toLowerCase()) ? 5 : 0;
+
+    const score = Math.min(
+      100,
+      Math.round(skillScore + resumeScorePart + careerPart + locationPart)
+    );
+
+    const reasonParts = [];
+
+    if (matchedSkills.length > 0) {
+      reasonParts.push(`符合 ${matchedSkills.join("、")} 等需求技能`);
+    }
+
+    if (resumeScore >= 80) {
+      reasonParts.push("履歷完整度高，內容相對完整");
+    } else if (resumeScore >= 60) {
+      reasonParts.push("履歷完整度中等，具備進一步面試評估價值");
+    } else {
+      reasonParts.push("履歷完整度仍可補強，建議面試時確認細節");
+    }
+
+    if (record.careerDirection) {
+      reasonParts.push(`職涯方向偏向「${record.careerDirection}」`);
+    }
+
+    return {
+      ...record,
+      screeningScore: score,
+      matchedSkills,
+      screeningMissingSkills: missingSkills,
+      screeningReason: reasonParts.join("，") + "。",
+    };
+  };
+
+  const loadRecords = async () => {
+    if (!db) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const snapshot = await getDocs(collection(db, "resumes"));
+      const data = snapshot.docs
+        .map((docItem) => ({ id: docItem.id, ...docItem.data() }))
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+      setRecords(data);
+    } catch (error) {
+      console.warn("讀取候選人資料失敗：", error);
+      setSysError?.("讀取候選人資料失敗，請確認 Firestore Rules 是否允許企業端讀取 resumes。");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecords();
+  }, []);
+
+  const runScreening = () => {
+    const requiredSkills = parseRequiredSkills(requiredSkillsText);
+
+    if (requiredSkills.length === 0) {
+      setSysError?.("請至少輸入一項需求技能，例如 React、SQL、Excel。");
+      return;
+    }
+
+    const latestCandidates = getLatestRecordsByCandidate(records);
+
+    const nextResults = latestCandidates
+      .map((record) => calculateFit(record, requiredSkills))
+      .filter((record) => record.screeningScore >= Number(minScore || 0))
+      .sort((a, b) => b.screeningScore - a.screeningScore);
+
+    setResults(nextResults);
+  };
+
+  useEffect(() => {
+    if (records.length > 0) runScreening();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records]);
+
   return (
     <>
       <HeroSection
         title="人才自動篩選"
-        description="輸入職缺需求後，系統會依據履歷分析紀錄，協助企業端排序適合候選人。"
+        description="輸入職缺需求後，系統會根據候選人的履歷分析紀錄，比對需求技能、履歷完整度與職涯方向，協助企業端快速排序候選人。"
         statItems={[
           { icon: <Target size={18} />, value: "技能比對", label: "篩選依據" },
-          { icon: <BarChart2 size={18} />, value: "符合度", label: "自動排序" },
-          { icon: <User size={18} />, value: "候選人", label: "履歷紀錄" },
-          { icon: <CheckCircle size={18} />, value: "初篩", label: "降低人工成本" },
+          { icon: <BarChart2 size={18} />, value: results.length, label: "符合候選人" },
+          { icon: <User size={18} />, value: records.length, label: "履歷紀錄" },
+          { icon: <CheckCircle size={18} />, value: `${minScore}%`, label: "最低符合度" },
         ]}
       />
 
       <PageBody>
+        <div style={{ ...STYLES.card, marginBottom: 22 }}>
+          <h3 style={STYLES.title}>
+            <Briefcase size={20} /> 職缺條件設定
+          </h3>
+
+          <div
+            className="responsive-grid-2"
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
+          >
+            <div>
+              <label style={{ fontWeight: 800, color: COLORS.primary }}>職缺名稱</label>
+              <input
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="例如：前端工程師、資料分析助理"
+                style={{ ...STYLES.input, marginTop: 8 }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontWeight: 800, color: COLORS.primary }}>工作地點</label>
+              <input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="例如：台北市、遠端、台中市"
+                style={{ ...STYLES.input, marginTop: 8 }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontWeight: 800, color: COLORS.primary }}>職缺類型</label>
+              <select
+                value={jobType}
+                onChange={(e) => setJobType(e.target.value)}
+                style={{ ...STYLES.input, marginTop: 8 }}
+              >
+                <option>全職</option>
+                <option>實習</option>
+                <option>兼職</option>
+                <option>遠端</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontWeight: 800, color: COLORS.primary }}>最低符合度</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={minScore}
+                onChange={(e) => setMinScore(e.target.value)}
+                style={{ ...STYLES.input, marginTop: 8 }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16 }}>
+            <label style={{ fontWeight: 800, color: COLORS.primary }}>需求技能</label>
+            <textarea
+              value={requiredSkillsText}
+              onChange={(e) => setRequiredSkillsText(e.target.value)}
+              placeholder="請用逗號分隔，例如：React, JavaScript, Firebase"
+              style={{
+                ...STYLES.input,
+                marginTop: 8,
+                minHeight: 90,
+                resize: "vertical",
+                lineHeight: 1.7,
+              }}
+            />
+          </div>
+
+          <button
+            onClick={runScreening}
+            style={{ ...STYLES.button, marginTop: 16, width: "100%" }}
+            disabled={loading}
+          >
+            <Target size={18} />
+            {loading ? "讀取候選人資料中..." : "開始自動篩選"}
+          </button>
+        </div>
+
         <div style={STYLES.card}>
           <h3 style={STYLES.title}>
-            <Target size={20} /> 自動篩選功能
+            <BarChart2 size={20} /> 篩選結果
           </h3>
-          <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
-            這裡下一步會加入職缺條件輸入、需求技能比對、候選人符合度排序與推薦理由。
-          </p>
+
+          {loading ? (
+            <p style={{ color: COLORS.textMuted, margin: 0 }}>正在讀取候選人資料...</p>
+          ) : results.length === 0 ? (
+            <p style={{ color: COLORS.textMuted, margin: 0 }}>
+              目前沒有符合條件的候選人。可以降低最低符合度，或調整需求技能。
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {results.map((record) => (
+                <div
+                  key={record.id}
+                  style={{
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 14,
+                    padding: 18,
+                    backgroundColor: "#FFFFFF",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <h4 style={{ margin: "0 0 6px", color: COLORS.primary }}>
+                        {record.userEmail || "未提供信箱"}
+                      </h4>
+                      <p style={{ margin: 0, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                        {record.fileName || "未命名履歷"}・
+                        {record.careerDirection || "尚未判斷方向"}・
+                        {record.createdAt ? new Date(record.createdAt).toLocaleString() : "無時間"}
+                      </p>
+                    </div>
+
+                    <span style={tagStyle(COLORS.success)}>
+                      符合度 {record.screeningScore}%
+                    </span>
+                  </div>
+
+                  <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: "14px 0" }}>
+                    {record.screeningReason}
+                  </p>
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                    <span style={tagStyle(COLORS.accent)}>
+                      履歷完整度 {record.resumeScore || 0}/100
+                    </span>
+                    <span style={tagStyle(COLORS.textMuted)}>
+                      {jobType}
+                    </span>
+                    {location && <span style={tagStyle(COLORS.textMuted)}>{location}</span>}
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    <strong style={{ color: COLORS.primary }}>符合技能：</strong>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                      {record.matchedSkills.length > 0 ? (
+                        record.matchedSkills.map((skill) => (
+                          <span key={skill} style={tagStyle(COLORS.success)}>
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: COLORS.textMuted }}>無明確符合技能</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 12 }}>
+                    <strong style={{ color: COLORS.primary }}>仍缺技能：</strong>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                      {record.screeningMissingSkills.length > 0 ? (
+                        record.screeningMissingSkills.map((skill) => (
+                          <span key={skill} style={tagStyle(COLORS.warning)}>
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: COLORS.success, fontWeight: 800 }}>
+                          需求技能皆已符合
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </PageBody>
     </>
   );
 }
 
-function CandidateListView() {
+function CandidateListView({ setSysError }) {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [keyword, setKeyword] = useState("");
+
+  useEffect(() => {
+    const loadRecords = async () => {
+      if (!db) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const snapshot = await getDocs(collection(db, "resumes"));
+        const data = snapshot.docs
+          .map((docItem) => ({ id: docItem.id, ...docItem.data() }))
+          .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        setRecords(data);
+      } catch (error) {
+        console.warn("讀取候選人履歷資料失敗：", error);
+        setSysError?.("讀取候選人履歷資料失敗，請確認 Firestore Rules 是否允許讀取 resumes。");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecords();
+  }, [setSysError]);
+
+  const filteredRecords = useMemo(() => {
+    const q = keyword.trim().toLowerCase();
+
+    if (!q) return records;
+
+    return records.filter((record) => {
+      const text = [
+        record.userEmail,
+        record.fileName,
+        record.careerDirection,
+        record.experienceLevel,
+        record.userSummary,
+        ...(record.skills || []),
+        ...(record.missingSkills || []),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return text.includes(q);
+    });
+  }, [records, keyword]);
+
   return (
     <>
       <HeroSection
         title="候選人履歷資料"
-        description="企業端可查看系統中的候選人履歷分析紀錄，作為初步篩選參考。"
+        description="企業端可查看系統中的候選人履歷分析紀錄，包含履歷摘要、已具備能力、技能缺口與推薦職缺方向。"
         statItems={[
-          { icon: <FileText size={18} />, value: "履歷紀錄", label: "候選資料" },
-          { icon: <Sparkles size={18} />, value: "分析結果", label: "能力摘要" },
-          { icon: <Target size={18} />, value: "技能缺口", label: "補強資訊" },
-          { icon: <Briefcase size={18} />, value: "推薦職缺", label: "媒合參考" },
+          { icon: <FileText size={18} />, value: records.length, label: "履歷紀錄" },
+          { icon: <Sparkles size={18} />, value: filteredRecords.length, label: "目前顯示" },
+          { icon: <Target size={18} />, value: "技能缺口", label: "篩選參考" },
+          { icon: <Briefcase size={18} />, value: "職涯方向", label: "媒合參考" },
         ]}
       />
 
       <PageBody>
+        <div style={{ ...STYLES.card, marginBottom: 22 }}>
+          <h3 style={STYLES.title}>
+            <Search size={20} /> 搜尋候選人
+          </h3>
+
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="搜尋信箱、技能、職涯方向或履歷檔名，例如 React、資料分析、行銷"
+            style={STYLES.input}
+          />
+        </div>
+
         <div style={STYLES.card}>
           <h3 style={STYLES.title}>
             <FileText size={20} /> 候選人資料列表
           </h3>
-          <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
-            這裡下一步會讀取 Firestore resumes 集合，顯示所有候選人的履歷分析紀錄。
-          </p>
+
+          {loading ? (
+            <p style={{ color: COLORS.textMuted, margin: 0 }}>正在讀取候選人資料...</p>
+          ) : filteredRecords.length === 0 ? (
+            <p style={{ color: COLORS.textMuted, margin: 0 }}>
+              找不到符合條件的候選人資料。
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {filteredRecords.map((record) => (
+                <div
+                  key={record.id}
+                  style={{
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 14,
+                    padding: 18,
+                    backgroundColor: "#FFFFFF",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                      <h4 style={{ margin: "0 0 6px", color: COLORS.primary }}>
+                        {record.userEmail || "未提供信箱"}
+                      </h4>
+                      <p style={{ margin: 0, color: COLORS.textMuted, lineHeight: 1.6 }}>
+                        {record.fileName || "未命名履歷"}・
+                        {record.createdAt ? new Date(record.createdAt).toLocaleString() : "無時間紀錄"}
+                      </p>
+                    </div>
+
+                    <span style={tagStyle(COLORS.success)}>
+                      完整度 {record.resumeScore || 0}/100
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {record.careerDirection && (
+                      <span style={tagStyle(COLORS.accent)}>
+                        {record.careerDirection}
+                      </span>
+                    )}
+
+                    {record.experienceLevel && (
+                      <span style={tagStyle(COLORS.textMuted)}>
+                        {record.experienceLevel}
+                      </span>
+                    )}
+
+                    <span style={tagStyle(COLORS.textMuted)}>
+                      推薦 {record.recommendedJobs?.length || 0} 個職缺
+                    </span>
+                  </div>
+
+                  <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: "14px 0" }}>
+                    {makeUserFriendlySummary(record.userSummary || record.nlpSummary)}
+                  </p>
+
+                  <div style={{ marginTop: 10 }}>
+                    <strong style={{ color: COLORS.primary }}>已具備能力：</strong>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                      {(record.skills || []).slice(0, 10).map((skill) => (
+                        <span key={skill} style={tagStyle(COLORS.success)}>
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 12 }}>
+                    <strong style={{ color: COLORS.primary }}>技能缺口：</strong>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                      {(record.missingSkills || []).length > 0 ? (
+                        record.missingSkills.slice(0, 10).map((skill) => (
+                          <span key={skill} style={tagStyle(COLORS.warning)}>
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: COLORS.textMuted }}>目前無明顯技能缺口</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {(record.recommendedJobs || []).length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <strong style={{ color: COLORS.primary }}>推薦職缺方向：</strong>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                        {(record.recommendedJobs || []).slice(0, 5).map((job, index) => (
+                          <span key={`${job.title}-${index}`} style={tagStyle(COLORS.accent)}>
+                            {job.title} {job.matchRate ? `${job.matchRate}%` : ""}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </PageBody>
     </>
@@ -2356,30 +3213,314 @@ function CandidateListView() {
 }
 
 function ResumeCompareView({ resumeRecords }) {
+  const [leftId, setLeftId] = useState("");
+  const [rightId, setRightId] = useState("");
+
+  useEffect(() => {
+    if (resumeRecords.length >= 2) {
+      setLeftId((prev) => prev || resumeRecords[1]?.id || "");
+      setRightId((prev) => prev || resumeRecords[0]?.id || "");
+    } else if (resumeRecords.length === 1) {
+      setLeftId(resumeRecords[0]?.id || "");
+      setRightId(resumeRecords[0]?.id || "");
+    }
+  }, [resumeRecords]);
+
+  const leftRecord = resumeRecords.find((record) => record.id === leftId);
+  const rightRecord = resumeRecords.find((record) => record.id === rightId);
+
+  const getAverageMatch = (record) => {
+    const rates = (record?.recommendedJobs || [])
+      .map((job) => Number(job.matchRate || 0))
+      .filter((num) => num > 0);
+
+    if (rates.length === 0) return 0;
+
+    return Math.round(rates.reduce((sum, value) => sum + value, 0) / rates.length);
+  };
+
+  const getDiff = (a = [], b = []) => {
+    const leftSet = new Set((a || []).map((item) => String(item).trim()));
+    const rightSet = new Set((b || []).map((item) => String(item).trim()));
+
+    return {
+      added: Array.from(rightSet).filter((item) => item && !leftSet.has(item)),
+      removed: Array.from(leftSet).filter((item) => item && !rightSet.has(item)),
+    };
+  };
+
+  const skillDiff = getDiff(leftRecord?.skills, rightRecord?.skills);
+  const missingDiff = getDiff(leftRecord?.missingSkills, rightRecord?.missingSkills);
+
+  const scoreChange =
+    leftRecord && rightRecord
+      ? Number(rightRecord.resumeScore || 0) - Number(leftRecord.resumeScore || 0)
+      : 0;
+
+  const avgMatchChange =
+    leftRecord && rightRecord ? getAverageMatch(rightRecord) - getAverageMatch(leftRecord) : 0;
+
+  const renderChange = (value, suffix = "") => {
+    if (value > 0) return `+${value}${suffix}`;
+    if (value < 0) return `${value}${suffix}`;
+    return `0${suffix}`;
+  };
+
+  const optionLabel = (record, index) => {
+    const date = record.createdAt ? new Date(record.createdAt).toLocaleString() : `版本 ${index + 1}`;
+    return `${record.fileName || "未命名履歷"}｜${date}`;
+  };
+
   return (
     <>
       <HeroSection
         title="履歷版本比較"
-        description="比較不同履歷版本的完整度、技能數量、推薦職缺與補強能力變化。"
+        description="選擇兩次履歷分析紀錄，比較履歷完整度、技能變化、推薦職缺數與技能缺口差異。"
         statItems={[
           { icon: <FileText size={18} />, value: resumeRecords.length, label: "可比較紀錄" },
-          { icon: <BarChart2 size={18} />, value: "分數變化", label: "完整度比較" },
-          { icon: <Sparkles size={18} />, value: "技能差異", label: "能力變化" },
-          { icon: <Briefcase size={18} />, value: "職缺變化", label: "推薦比較" },
+          { icon: <BarChart2 size={18} />, value: renderChange(scoreChange), label: "完整度變化" },
+          { icon: <Sparkles size={18} />, value: skillDiff.added.length, label: "新增技能" },
+          { icon: <Briefcase size={18} />, value: renderChange(avgMatchChange, "%"), label: "適合度變化" },
         ]}
       />
 
       <PageBody>
-        <div style={STYLES.card}>
-          <h3 style={STYLES.title}>
-            <BarChart2 size={20} /> 版本比較功能
-          </h3>
-          <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
-            這裡下一步會加入兩份履歷紀錄選擇器，並比較履歷完整度、技能變化與推薦職缺變化。
-          </p>
-        </div>
+        {resumeRecords.length < 2 ? (
+          <div style={STYLES.card}>
+            <h3 style={STYLES.title}>
+              <AlertCircle size={20} /> 尚無足夠版本可比較
+            </h3>
+            <p style={{ color: COLORS.textMuted, lineHeight: 1.8, margin: 0 }}>
+              請至少完成兩次履歷分析，才能比較不同版本之間的變化。
+            </p>
+          </div>
+        ) : (
+          <>
+            <div style={{ ...STYLES.card, marginBottom: 22 }}>
+              <h3 style={STYLES.title}>
+                <FileText size={20} /> 選擇比較版本
+              </h3>
+
+              <div
+                className="responsive-grid-2"
+                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
+              >
+                <div>
+                  <label style={{ fontWeight: 800, color: COLORS.primary }}>舊版本</label>
+                  <select
+                    value={leftId}
+                    onChange={(e) => setLeftId(e.target.value)}
+                    style={{ ...STYLES.input, marginTop: 8 }}
+                  >
+                    {resumeRecords.map((record, index) => (
+                      <option key={record.id} value={record.id}>
+                        {optionLabel(record, index)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontWeight: 800, color: COLORS.primary }}>新版本</label>
+                  <select
+                    value={rightId}
+                    onChange={(e) => setRightId(e.target.value)}
+                    style={{ ...STYLES.input, marginTop: 8 }}
+                  >
+                    {resumeRecords.map((record, index) => (
+                      <option key={record.id} value={record.id}>
+                        {optionLabel(record, index)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {leftRecord && rightRecord && (
+              <>
+                <div
+                  className="responsive-grid-4"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 16,
+                    marginBottom: 22,
+                  }}
+                >
+                  <CompareMetricCard
+                    title="履歷完整度"
+                    oldValue={`${leftRecord.resumeScore || 0}/100`}
+                    newValue={`${rightRecord.resumeScore || 0}/100`}
+                    change={renderChange(scoreChange)}
+                    positive={scoreChange >= 0}
+                  />
+                  <CompareMetricCard
+                    title="技能數量"
+                    oldValue={(leftRecord.skills || []).length}
+                    newValue={(rightRecord.skills || []).length}
+                    change={renderChange((rightRecord.skills || []).length - (leftRecord.skills || []).length)}
+                    positive={(rightRecord.skills || []).length >= (leftRecord.skills || []).length}
+                  />
+                  <CompareMetricCard
+                    title="推薦職缺數"
+                    oldValue={(leftRecord.recommendedJobs || []).length}
+                    newValue={(rightRecord.recommendedJobs || []).length}
+                    change={renderChange((rightRecord.recommendedJobs || []).length - (leftRecord.recommendedJobs || []).length)}
+                    positive={(rightRecord.recommendedJobs || []).length >= (leftRecord.recommendedJobs || []).length}
+                  />
+                  <CompareMetricCard
+                    title="平均適合度"
+                    oldValue={`${getAverageMatch(leftRecord)}%`}
+                    newValue={`${getAverageMatch(rightRecord)}%`}
+                    change={renderChange(avgMatchChange, "%")}
+                    positive={avgMatchChange >= 0}
+                  />
+                </div>
+
+                <div
+                  className="responsive-grid-2"
+                  style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
+                >
+                  <div style={STYLES.card}>
+                    <h3 style={STYLES.title}>
+                      <Sparkles size={20} /> 新增能力
+                    </h3>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {skillDiff.added.length > 0 ? (
+                        skillDiff.added.map((skill) => (
+                          <span key={skill} style={tagStyle(COLORS.success)}>
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: COLORS.textMuted }}>沒有新增能力。</span>
+                      )}
+                    </div>
+
+                    <h3 style={{ ...STYLES.title, marginTop: 20 }}>
+                      <AlertCircle size={20} /> 減少能力
+                    </h3>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {skillDiff.removed.length > 0 ? (
+                        skillDiff.removed.map((skill) => (
+                          <span key={skill} style={tagStyle(COLORS.warning)}>
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: COLORS.textMuted }}>沒有減少能力。</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={STYLES.card}>
+                    <h3 style={STYLES.title}>
+                      <Target size={20} /> 技能缺口變化
+                    </h3>
+
+                    <div style={{ fontWeight: 800, color: COLORS.primary, marginBottom: 8 }}>
+                      新增需補強項目
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
+                      {missingDiff.added.length > 0 ? (
+                        missingDiff.added.map((skill) => (
+                          <span key={skill} style={tagStyle(COLORS.warning)}>
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: COLORS.textMuted }}>沒有新增缺口。</span>
+                      )}
+                    </div>
+
+                    <div style={{ fontWeight: 800, color: COLORS.primary, marginBottom: 8 }}>
+                      已改善缺口
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {missingDiff.removed.length > 0 ? (
+                        missingDiff.removed.map((skill) => (
+                          <span key={skill} style={tagStyle(COLORS.success)}>
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: COLORS.textMuted }}>尚無明顯改善項目。</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ ...STYLES.card, marginTop: 22 }}>
+                  <h3 style={STYLES.title}>
+                    <FileText size={20} /> 摘要比較
+                  </h3>
+
+                  <div
+                    className="responsive-grid-2"
+                    style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}
+                  >
+                    <div
+                      style={{
+                        border: `1px solid ${COLORS.border}`,
+                        borderRadius: 14,
+                        padding: 16,
+                        backgroundColor: "#FBFDFF",
+                      }}
+                    >
+                      <strong style={{ color: COLORS.primary }}>舊版本摘要</strong>
+                      <p style={{ color: COLORS.textMuted, lineHeight: 1.8, marginBottom: 0 }}>
+                        {makeUserFriendlySummary(leftRecord.userSummary || leftRecord.nlpSummary)}
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        border: `1px solid ${COLORS.border}`,
+                        borderRadius: 14,
+                        padding: 16,
+                        backgroundColor: "#FBFDFF",
+                      }}
+                    >
+                      <strong style={{ color: COLORS.primary }}>新版本摘要</strong>
+                      <p style={{ color: COLORS.textMuted, lineHeight: 1.8, marginBottom: 0 }}>
+                        {makeUserFriendlySummary(rightRecord.userSummary || rightRecord.nlpSummary)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </PageBody>
     </>
+  );
+}
+
+function CompareMetricCard({ title, oldValue, newValue, change, positive }) {
+  return (
+    <div style={STYLES.card}>
+      <div style={{ color: COLORS.textMuted, fontSize: "0.9rem", marginBottom: 10 }}>
+        {title}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ color: COLORS.textMuted, fontWeight: 800 }}>{oldValue}</span>
+        <span style={{ color: COLORS.textMuted }}>→</span>
+        <span style={{ color: COLORS.primary, fontWeight: 900, fontSize: "1.25rem" }}>
+          {newValue}
+        </span>
+      </div>
+      <div
+        style={{
+          marginTop: 10,
+          color: positive ? COLORS.success : COLORS.warning,
+          fontWeight: 900,
+        }}
+      >
+        {change}
+      </div>
+    </div>
   );
 }
 
