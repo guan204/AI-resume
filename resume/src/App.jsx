@@ -1008,27 +1008,7 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
                 : "註冊後會依照帳號身分，顯示求職者端或企業端功能。"}
             </p>
           </div>
-
-          <div
-            style={{
-              backgroundColor: "#F8FAFC",
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: "12px",
-              padding: "14px 16px",
-              marginBottom: "20px",
-              lineHeight: 1.7,
-              color: COLORS.textMuted,
-              fontSize: "0.92rem",
-              textAlign: "left",
-            }}
-          >
-            <strong style={{ color: COLORS.primary }}>帳號功能提醒</strong>
-            <br />
-            求職者帳號：可使用履歷分析、職缺推薦、履歷版本比較。
-            <br />
-            企業端帳號：需輸入企業驗證碼，可使用人才自動篩選與候選人履歷資料。
-          </div>
-
+          
           <div style={{ marginBottom: "18px" }}>
             <label style={{ fontWeight: 700, color: COLORS.primary }}>
               {isLoginMode ? "登入身分" : "帳號類型"}
@@ -1146,17 +1126,6 @@ function AuthView({ setSysError, setSysMsg, onLoginSuccess }) {
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 style={{ ...STYLES.input, marginTop: 8, marginBottom: 8 }}
               />
-
-              <p
-                style={{
-                  margin: 0,
-                  color: COLORS.textMuted,
-                  fontSize: "0.85rem",
-                  lineHeight: 1.6,
-                }}
-              >
-                Demo 版企業端登入與註冊皆需驗證碼，避免一般使用者任意使用企業功能。
-              </p>
             </div>
           )}
 
